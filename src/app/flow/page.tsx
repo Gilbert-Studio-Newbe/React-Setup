@@ -65,15 +65,15 @@ const MAX_HISTORY_LENGTH = 50;
 
 // Edge colors
 const edgeColors = [
-  '#1a73e8', // Blue
-  '#34a853', // Green
-  '#ea4335', // Red
-  '#fbbc05', // Yellow
-  '#9c27b0', // Purple
-  '#00acc1', // Cyan
-  '#ff9800', // Orange
-  '#757575', // Gray
-  '#000000', // Black
+  { value: '#1a73e8', name: 'Blue' },
+  { value: '#34a853', name: 'Green' },
+  { value: '#ea4335', name: 'Red' },
+  { value: '#fbbc05', name: 'Yellow' },
+  { value: '#9c27b0', name: 'Purple' },
+  { value: '#00acc1', name: 'Cyan' },
+  { value: '#ff9800', name: 'Orange' },
+  { value: '#757575', name: 'Gray' },
+  { value: '#000000', name: 'Black' },
 ];
 
 function Flow() {
@@ -85,7 +85,7 @@ function Flow() {
   // Edge configuration
   const [edgeType, setEdgeType] = useState<'default' | 'animated'>('default');
   const [connectionLineType, setConnectionLineType] = useState<ConnectionLineType>(ConnectionLineType.Bezier);
-  const [edgeColor, setEdgeColor] = useState(edgeColors[0]);
+  const [edgeColor, setEdgeColor] = useState(edgeColors[0].value);
   const [edgeAnimated, setEdgeAnimated] = useState(false);
   const [showMarker, setShowMarker] = useState(true);
   
@@ -326,11 +326,10 @@ function Flow() {
                 value={edgeColor}
                 onChange={(e) => setEdgeColor(e.target.value)}
                 className="p-1 border rounded bg-white dark:bg-gray-700 text-sm"
-                style={{ color: edgeColor }}
               >
                 {edgeColors.map((color) => (
-                  <option key={color} value={color} style={{ color }}>
-                    {color}
+                  <option key={color.value} value={color.value} style={{ color: color.value }}>
+                    {color.name}
                   </option>
                 ))}
               </select>
