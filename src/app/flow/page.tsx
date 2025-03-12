@@ -80,7 +80,7 @@ function Flow() {
   const selectedElementsRef = useRef<{nodeIds: string[]; edgeIds: string[]}>({ nodeIds: [], edgeIds: [] });
   
   // Edge configuration
-  const [edgeType, setEdgeType] = useState<'default' | 'straight' | 'step' | 'smoothstep' | 'animated'>('default');
+  const [edgeType, setEdgeType] = useState<'default' | 'animated'>('default');
   const [connectionLineType, setConnectionLineType] = useState<ConnectionLineType>(ConnectionLineType.Bezier);
   const [edgeColor, setEdgeColor] = useState(edgeColors[0]);
   const [edgeAnimated, setEdgeAnimated] = useState(false);
@@ -235,23 +235,42 @@ function Flow() {
     [setEdges, edgeType, edgeColor, edgeAnimated, showMarker],
   );
   
-  // Handle edge drop outside of a valid connection
-  const onEdgeUpdateEnd = useCallback(
-    (_, edge) => {
-      // Delete the edge when it's dropped outside of a valid connection
-      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
-      
-      // Show toast notification
-      setToast({ message: 'Edge deleted on drop' });
-      setTimeout(() => setToast(null), 3000);
-    },
-    [setEdges],
-  );
+  // Handle edge deletion when connection is incomplete
+  const onConnectEnd = useCallback(() => {
+    // This is called when the user stops dragging a connection line
+    // (regardless of whether it's connected to a target or not)
+  }, []);
   
   // Handle edge update (reconnection)
   const onEdgeUpdate = useCallback(
     (oldEdge, newConnection) => {
       setEdges((els) => updateEdge(oldEdge, newConnection, els));
+    },
+    [setEdges],
+  );
+  
+  // Handle edge deletion when dropped outside a valid target
+  const onEdgeUpdateStart = useCallback(
+    (_, edge) => {
+      // Store the edge that's being updated
+      return { edge };
+    },
+    [],
+  );
+  
+  const onEdgeUpdateEnd = useCallback(
+    (event, { edge }) => {
+      // If the edge was dropped outside a valid target (no connection was made)
+      // we can detect this by checking if the event target is the pane
+      const target = event.target as Element;
+      if (target.classList.contains('react-flow__pane')) {
+        // Delete the edge
+        setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+        
+        // Show toast notification
+        setToast({ message: 'Edge deleted on drop' });
+        setTimeout(() => setToast(null), 3000);
+      }
     },
     [setEdges],
   );
@@ -271,31 +290,15 @@ function Flow() {
   };
   
   // Handle edge type change
-  const handleEdgeTypeChange = useCallback((type: 'default' | 'straight' | 'step' | 'smoothstep' | 'animated') => {
+  const handleEdgeTypeChange = useCallback((type: 'default' | 'animated') => {
     setEdgeType(type);
     
     // Update connection line type based on edge type
-    switch (type) {
-      case 'default':
-        setConnectionLineType(ConnectionLineType.Bezier);
-        break;
-      case 'straight':
-        setConnectionLineType(ConnectionLineType.Straight);
-        break;
-      case 'step':
-        setConnectionLineType(ConnectionLineType.Step);
-        break;
-      case 'smoothstep':
-        setConnectionLineType(ConnectionLineType.SmoothStep);
-        break;
-      case 'animated':
-        setConnectionLineType(ConnectionLineType.Bezier);
-        setEdgeAnimated(true);
-        return;
+    if (type === 'animated') {
+      setEdgeAnimated(true);
+    } else {
+      setEdgeAnimated(false);
     }
-    
-    // Reset animation for non-animated types
-    setEdgeAnimated(false);
     
     // Show toast notification
     setToast({ message: `Edge type set to ${type}` });
@@ -310,7 +313,9 @@ function Flow() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
         onEdgeUpdate={onEdgeUpdate}
+        onEdgeUpdateStart={onEdgeUpdateStart}
         onEdgeUpdateEnd={onEdgeUpdateEnd}
         fitView
         attributionPosition="top-right"
@@ -334,10 +339,7 @@ function Flow() {
                 onChange={(e) => handleEdgeTypeChange(e.target.value as any)}
                 className="p-1 border rounded bg-white dark:bg-gray-700 text-sm"
               >
-                <option value="default">Default (Bezier)</option>
-                <option value="straight">Straight</option>
-                <option value="step">Step</option>
-                <option value="smoothstep">Smooth Step</option>
+                <option value="default">Default</option>
                 <option value="animated">Animated</option>
               </select>
             </div>
@@ -359,16 +361,6 @@ function Flow() {
             </div>
             
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-sm">
-                <input 
-                  type="checkbox" 
-                  checked={edgeAnimated}
-                  onChange={(e) => setEdgeAnimated(e.target.checked)}
-                  className="rounded"
-                />
-                Animated
-              </label>
-              
               <label className="flex items-center gap-1 text-sm ml-3">
                 <input 
                   type="checkbox" 

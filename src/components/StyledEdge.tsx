@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getStepPath, getSmoothStepPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 
 interface StyledEdgeProps {
   id: string;
@@ -46,17 +46,9 @@ export default function StyledEdge({
       targetPosition,
     };
 
-    switch (data?.type) {
-      case 'straight':
-        return getStraightPath(pathParams);
-      case 'step':
-        return getStepPath(pathParams);
-      case 'smoothstep':
-        return getSmoothStepPath(pathParams);
-      case 'default':
-      default:
-        return getBezierPath(pathParams);
-    }
+    // For now, we'll just use bezier paths for all types
+    // since the other path functions aren't exported by @xyflow/react
+    return getBezierPath(pathParams);
   };
 
   const [edgePath, labelX, labelY] = getPath();
