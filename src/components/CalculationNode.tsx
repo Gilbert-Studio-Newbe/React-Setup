@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow, NodeProps, useNodes } from '@xyflow/react';
 
 interface CalculationNodeData {
@@ -19,6 +19,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
   
   const { setNodes, getEdges } = useReactFlow();
   const nodes = useNodes();
+  const isUpdatingRef = useRef(false);
+  const prevNodesRef = useRef<string>('');
   
   // Get the operation symbol
   const getOperationSymbol = (op: string): string => {
@@ -34,24 +36,43 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
   // Update the node data when the operation changes
   const updateNodeData = (newOperation: 'add' | 'subtract' | 'multiply' | 'divide') => {
     setOperation(newOperation);
-    setNodes(nodes => 
-      nodes.map(node => {
-        if (node.id === id) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              operation: newOperation
-            }
-          };
-        }
-        return node;
-      })
-    );
+    
+    // Prevent cascading updates by checking if we're already updating
+    if (isUpdatingRef.current) return;
+    isUpdatingRef.current = true;
+    
+    // Use setTimeout to break the synchronous update cycle
+    setTimeout(() => {
+      setNodes(nodes => 
+        nodes.map(node => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                operation: newOperation
+              }
+            };
+          }
+          return node;
+        })
+      );
+      isUpdatingRef.current = false;
+    }, 0);
   };
   
   // Calculate the result based on connected nodes
   useEffect(() => {
+    // Skip if we're already updating to prevent cascading updates
+    if (isUpdatingRef.current) return;
+    
+    // Stringify nodes to compare with previous state
+    const nodesJson = JSON.stringify(nodes.map(n => ({ id: n.id, data: n.data })));
+    
+    // Only recalculate if nodes have changed
+    if (nodesJson === prevNodesRef.current) return;
+    prevNodesRef.current = nodesJson;
+    
     const edges = getEdges();
     const incomingEdges = edges.filter(edge => edge.target === id);
     
@@ -96,22 +117,28 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
     // Update result
     setResult(calculatedResult);
     
-    // Update node data
-    setNodes(nodes => 
-      nodes.map(node => {
-        if (node.id === id) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              result: calculatedResult
-            }
-          };
-        }
-        return node;
-      })
-    );
-  }, [id, operation, nodes, getEdges, setNodes]);
+    // Prevent cascading updates
+    isUpdatingRef.current = true;
+    
+    // Use setTimeout to break the synchronous update cycle
+    setTimeout(() => {
+      setNodes(nodes => 
+        nodes.map(node => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                result: calculatedResult
+              }
+            };
+          }
+          return node;
+        })
+      );
+      isUpdatingRef.current = false;
+    }, 0);
+  }, [id, operation, getEdges, setNodes, nodes]);
   
   return (
     <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[200px] font-mono">
