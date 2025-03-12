@@ -10,8 +10,6 @@ import {
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
-  useKeyPress,
-  useOnSelectionChange,
 } from '@xyflow/react';
 
 import {
@@ -63,9 +61,29 @@ function Flow() {
   }, []);
   
   // Handle keyboard shortcuts and toolbar actions
-  const handleAction = useCallback((action: string) => {
-    // Show toast notification
-    setToast({ message: `${action.charAt(0).toUpperCase() + action.slice(1)} operation completed` });
+  const handleAction = useCallback((action: string, data?: any) => {
+    // Show toast notification with more detailed information
+    let message = `${action.charAt(0).toUpperCase() + action.slice(1)}`;
+    
+    if (data) {
+      if (data.nodeCount !== undefined || data.edgeCount !== undefined) {
+        const nodeText = data.nodeCount ? `${data.nodeCount} node${data.nodeCount !== 1 ? 's' : ''}` : '';
+        const edgeText = data.edgeCount ? `${data.edgeCount} edge${data.edgeCount !== 1 ? 's' : ''}` : '';
+        
+        if (nodeText && edgeText) {
+          message += ` ${nodeText} and ${edgeText}`;
+        } else {
+          message += ` ${nodeText}${edgeText}`;
+        }
+      }
+    }
+    
+    setToast({ message: `${message}` });
+    
+    // Auto-dismiss toast after 3 seconds
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
   }, []);
   
   const onConnect = useCallback(
@@ -86,7 +104,6 @@ function Flow() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         className="bg-[#F7F9FB] dark:bg-[#1a1a1a]"
-        deleteKeyCode="Delete"
       >
         <MiniMap zoomable pannable nodeClassName={nodeClassName} />
         <Controls />

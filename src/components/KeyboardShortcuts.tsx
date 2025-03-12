@@ -8,37 +8,44 @@ interface KeyboardShortcutsProps {
 }
 
 export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps) {
-  const { getNodes, getEdges, setNodes, setEdges, getSelectedNodes, getSelectedEdges } = useReactFlow();
+  const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
   const clipboardRef = useRef<{nodes: Node[]; edges: Edge[]}>({ nodes: [], edges: [] });
   
   // Handle delete operation
   const handleDelete = useCallback(() => {
-    const selectedNodes = getSelectedNodes();
-    const selectedEdges = getSelectedEdges();
+    const allNodes = getNodes();
+    const allEdges = getEdges();
+    
+    const selectedNodes = allNodes.filter(node => node.selected);
+    const selectedEdges = allEdges.filter(edge => edge.selected);
     
     if (selectedNodes.length === 0 && selectedEdges.length === 0) return;
     
     // Delete selected nodes
     if (selectedNodes.length > 0) {
-      setNodes((nodes) => nodes.filter((node) => !selectedNodes.some((n) => n.id === node.id)));
+      setNodes((nodes) => nodes.filter((node) => !node.selected));
     }
     
     // Delete selected edges
     if (selectedEdges.length > 0) {
-      setEdges((edges) => edges.filter((edge) => !selectedEdges.some((e) => e.id === edge.id)));
+      setEdges((edges) => edges.filter((edge) => !edge.selected));
     }
     
     if (onShortcut) {
       onShortcut('delete', { nodeCount: selectedNodes.length, edgeCount: selectedEdges.length });
     }
-  }, [getSelectedNodes, getSelectedEdges, setNodes, setEdges, onShortcut]);
+  }, [getNodes, getEdges, setNodes, setEdges, onShortcut]);
   
   // Handle copy operation
   const handleCopy = useCallback(() => {
-    const selectedNodes = getSelectedNodes();
-    const selectedEdges = getSelectedEdges().filter((edge) => 
-      selectedNodes.some((node) => node.id === edge.source) && 
-      selectedNodes.some((node) => node.id === edge.target)
+    const allNodes = getNodes();
+    const allEdges = getEdges();
+    
+    const selectedNodes = allNodes.filter(node => node.selected);
+    const selectedEdges = allEdges.filter(edge => 
+      edge.selected && 
+      selectedNodes.some(node => node.id === edge.source) && 
+      selectedNodes.some(node => node.id === edge.target)
     );
     
     if (selectedNodes.length === 0) return;
@@ -51,7 +58,7 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
     if (onShortcut) {
       onShortcut('copy', { nodeCount: selectedNodes.length, edgeCount: selectedEdges.length });
     }
-  }, [getSelectedNodes, getSelectedEdges, onShortcut]);
+  }, [getNodes, getEdges, onShortcut]);
   
   // Handle paste operation
   const handlePaste = useCallback(() => {
