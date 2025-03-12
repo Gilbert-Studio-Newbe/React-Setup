@@ -17,6 +17,7 @@ import {
   Panel,
   MarkerType,
   useReactFlow,
+  useOnSelectionChange,
 } from '@xyflow/react';
 
 import {
@@ -99,6 +100,7 @@ function Flow() {
   const nodesJsonRef = useRef('');
   const edgesJsonRef = useRef('');
   const isInitialRender = useRef(true);
+  const pendingHistoryUpdate = useRef(false);
   
   // Initialize history with initial state
   useEffect(() => {
@@ -116,7 +118,7 @@ function Flow() {
       
       isInitialRender.current = false;
     }
-  }, [nodes, edges]);
+  }, []);
   
   // Save current state to history when nodes or edges change
   useEffect(() => {
@@ -126,37 +128,51 @@ function Flow() {
       return;
     }
     
-    // Stringify the current state to compare with previous state
-    const nodesJson = JSON.stringify(nodes);
-    const edgesJson = JSON.stringify(edges);
-    
-    // Only update history if something actually changed
-    if (nodesJson === nodesJsonRef.current && edgesJson === edgesJsonRef.current) {
+    // Prevent multiple history updates in the same render cycle
+    if (pendingHistoryUpdate.current) {
       return;
     }
     
-    // Update refs with current state
-    nodesJsonRef.current = nodesJson;
-    edgesJsonRef.current = edgesJson;
+    pendingHistoryUpdate.current = true;
     
-    // Create a snapshot of the current state
-    const currentState = {
-      nodes: JSON.parse(nodesJson),
-      edges: JSON.parse(edgesJson)
-    };
-    
-    // If we're not at the end of the history, truncate the future states
-    const newHistory = currentHistoryIndex < history.length - 1
-      ? [...history.slice(0, currentHistoryIndex + 1), currentState]
-      : [...history, currentState];
-    
-    // Limit history length
-    const limitedHistory = newHistory.length > MAX_HISTORY_LENGTH
-      ? newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH)
-      : newHistory;
-    
-    setHistory(limitedHistory);
-    setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, MAX_HISTORY_LENGTH - 1));
+    // Use setTimeout to defer the history update to the next tick
+    // This prevents the infinite loop by ensuring state updates don't cascade
+    setTimeout(() => {
+      // Stringify the current state to compare with previous state
+      const nodesJson = JSON.stringify(nodes);
+      const edgesJson = JSON.stringify(edges);
+      
+      // Only update history if something actually changed
+      if (nodesJson === nodesJsonRef.current && edgesJson === edgesJsonRef.current) {
+        pendingHistoryUpdate.current = false;
+        return;
+      }
+      
+      // Update refs with current state
+      nodesJsonRef.current = nodesJson;
+      edgesJsonRef.current = edgesJson;
+      
+      // Create a snapshot of the current state
+      const currentState = {
+        nodes: JSON.parse(nodesJson),
+        edges: JSON.parse(edgesJson)
+      };
+      
+      // If we're not at the end of the history, truncate the future states
+      const newHistory = currentHistoryIndex < history.length - 1
+        ? [...history.slice(0, currentHistoryIndex + 1), currentState]
+        : [...history, currentState];
+      
+      // Limit history length
+      const limitedHistory = newHistory.length > MAX_HISTORY_LENGTH
+        ? newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH)
+        : newHistory;
+      
+      setHistory(limitedHistory);
+      setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, MAX_HISTORY_LENGTH - 1));
+      
+      pendingHistoryUpdate.current = false;
+    }, 0);
   }, [nodes, edges, history, currentHistoryIndex]);
   
   // Handle undo action
@@ -286,11 +302,6 @@ function Flow() {
     edgeUpdateSuccessful.current = true;
   }, [setEdges]);
   
-  // Handle edge update start - using a custom handler
-  const handleEdgeUpdateStart = useCallback(() => {
-    edgeUpdateSuccessful.current = false;
-  }, []);
-  
   // Handle edge type change
   const handleEdgeTypeChange = useCallback((type: 'default' | 'animated') => {
     setEdgeType(type);
@@ -307,6 +318,21 @@ function Flow() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // Set up event handlers for edge updates
+  useEffect(() => {
+    const handleEdgeUpdateStart = () => {
+      edgeUpdateSuccessful.current = false;
+    };
+    
+    // Add event listener for edge update start
+    document.addEventListener('mousedown', handleEdgeUpdateStart);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('mousedown', handleEdgeUpdateStart);
+    };
+  }, []);
+
   return (
     <div className="w-screen h-screen relative">
       <ReactFlow
@@ -317,7 +343,6 @@ function Flow() {
         onConnect={onConnect}
         onEdgeUpdate={onEdgeUpdate}
         onEdgeUpdateEnd={onEdgeUpdateEnd}
-        onConnectionStart={handleEdgeUpdateStart}
         fitView
         attributionPosition="top-right"
         nodeTypes={nodeTypes}
