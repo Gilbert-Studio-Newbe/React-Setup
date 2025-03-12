@@ -1,8 +1,15 @@
 @import "tailwindcss";
+@import '@xyflow/react/dist/style.css';
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --xy-node-border-default: 1px solid #ddd;
+  --xy-handle-border-color-default: #555;
+  --xy-node-boxshadow-default: 0 1px 4px 1px rgba(0, 0, 0, 0.08);
+  --xy-edge-node-color-default: #555;
+  --xy-theme-hover: #683bfa;
+  --xy-theme-edge-hover: #683bfa;
 }
 
 @theme inline {
@@ -16,6 +23,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --xy-node-border-default: 1px solid #444;
+    --xy-handle-border-color-default: #aaa;
+    --xy-edge-node-color-default: #aaa;
   }
 }
 
@@ -23,4 +33,73 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Custom Handles */
+.custom-handle {
+  background-color: var(--xy-handle-border-color-default);
+  border-radius: 1px;
+  width: 8px;
+  height: 4px;
+  border: none;
+  min-width: 2px;
+  min-height: 2px;
+}
+
+.custom-handle:hover,
+.custom-handle.connectionindicator:focus,
+.custom-handle.connectingfrom,
+.custom-handle.connectingto {
+  background-color: var(--xy-theme-edge-hover);
+}
+
+/* Minimap */
+.react-flow__minimap .group {
+  fill-opacity: 0.4;
+}
+
+.react-flow__minimap .resizer,
+.react-flow__minimap .tools,
+.react-flow__minimap .circle,
+.react-flow__minimap .textinput {
+  fill: rgb(208, 192, 247);
+}
+
+.react-flow__minimap .circle {
+  rx: 100%;
+  ry: 100%;
+}
+
+.react-flow__minimap .annotation {
+  display: none;
+}
+
+.react-flow__edge-textbg {
+  fill: #f7f9fb;
+}
+
+/* Node styles */
+.react-flow__node-annotation {
+  font-size: 16px;
+  width: 200px;
+  color: #683bfa;
+  position: absolute;
+  box-shadow: none;
+  font-family: monospace;
+  text-align: left;
+  background-color: transparent;
+  border: none;
+}
+
+.react-flow__node-toolbar {
+  background-color: #000000;
+  border-radius: 16px;
+  overflow: hidden;
 }

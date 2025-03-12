@@ -1,8 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# React Flow Next.js 14 Application
+
+This is a Next.js 14 application with App Router that demonstrates the use of React Flow for creating interactive node-based diagrams. The application showcases various custom node types and edge types that can be used to build complex diagrams.
+
+## Features
+
+- Interactive node-based diagrams using React Flow
+- Custom node types:
+  - Circle Node: Displays position information
+  - Text Input Node: Allows dimension adjustments
+  - Annotation Node: Displays informational annotations
+  - Toolbar Node: Includes emoji selection toolbar
+  - Resizer Node: Resizable node with multiple handles
+- Custom edge types:
+  - Button Edge: Edge with a delete button
+- Dark mode support
+- Responsive design with Tailwind CSS
 
 ## Getting Started
 
-First, run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -10,24 +36,35 @@ npm run dev
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app`: Next.js App Router pages
+  - `page.tsx`: Home page with link to flow diagram
+  - `flow/page.tsx`: Flow diagram page
+- `src/components`: React components
+  - `CircleNode.tsx`: Circle node component
+  - `TextInputNode.tsx`: Text input node component
+  - `AnnotationNode.tsx`: Annotation node component
+  - `ToolbarNode.tsx`: Toolbar node component
+  - `ResizerNode.tsx`: Resizer node component
+  - `ButtonEdge.tsx`: Button edge component
+  - `initial-elements.tsx`: Initial nodes and edges configuration
+
+## Future Enhancements
+
+This project can be expanded to work with ArchiCAD BIM Element JSON files to create architectural diagrams and visualizations.
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+To learn more about the technologies used in this project:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React Flow Documentation](https://reactflow.dev/docs/introduction/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
 ## Deploy on Vercel
 
