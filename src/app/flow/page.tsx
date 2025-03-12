@@ -72,6 +72,8 @@ const edgeColors = [
   '#9c27b0', // Purple
   '#00acc1', // Cyan
   '#ff9800', // Orange
+  '#757575', // Gray
+  '#000000', // Black
 ];
 
 function Flow() {
