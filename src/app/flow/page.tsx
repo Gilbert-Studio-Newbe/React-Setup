@@ -16,6 +16,7 @@ import {
   ConnectionLineType,
   Panel,
   MarkerType,
+  useReactFlow,
 } from '@xyflow/react';
 
 import {
@@ -85,6 +86,9 @@ function Flow() {
   const [edgeColor, setEdgeColor] = useState(edgeColors[0]);
   const [edgeAnimated, setEdgeAnimated] = useState(false);
   const [showMarker, setShowMarker] = useState(true);
+  
+  // Track edge updates
+  const edgeUpdateSuccessful = useRef(true);
   
   // History management
   const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
@@ -235,59 +239,29 @@ function Flow() {
     [setEdges, edgeType, edgeColor, edgeAnimated, showMarker],
   );
   
-  // Handle edge deletion when connection is incomplete
-  const onConnectEnd = useCallback(() => {
-    // This is called when the user stops dragging a connection line
-    // (regardless of whether it's connected to a target or not)
+  // Handle edge update start
+  const onEdgeUpdateStart = useCallback(() => {
+    edgeUpdateSuccessful.current = false;
   }, []);
-  
-  // Handle edge update (reconnection)
-  const onEdgeUpdate = useCallback(
-    (oldEdge, newConnection) => {
-      setEdges((els) => updateEdge(oldEdge, newConnection, els));
-    },
-    [setEdges],
-  );
-  
-  // Handle edge deletion when dropped outside a valid target
-  const onEdgeUpdateStart = useCallback(
-    (_, edge) => {
-      // Store the edge that's being updated
-      return { edge };
-    },
-    [],
-  );
-  
-  const onEdgeUpdateEnd = useCallback(
-    (event, { edge }) => {
-      // If the edge was dropped outside a valid target (no connection was made)
-      // we can detect this by checking if the event target is the pane
-      const target = event.target as Element;
-      if (target.classList.contains('react-flow__pane')) {
-        // Delete the edge
-        setEdges((eds) => eds.filter((e) => e.id !== edge.id));
-        
-        // Show toast notification
-        setToast({ message: 'Edge deleted on drop' });
-        setTimeout(() => setToast(null), 3000);
-      }
-    },
-    [setEdges],
-  );
-  
-  // Helper function to update an edge
-  const updateEdge = (oldEdge: Edge, newConnection: Connection, edges: Edge[]) => {
-    return edges.map((edge) => {
-      if (edge.id === oldEdge.id) {
-        return {
-          ...edge,
-          ...newConnection,
-        };
-      }
+
+  // Handle edge update
+  const onEdgeUpdate = useCallback((oldEdge: Edge, newConnection: Connection) => {
+    edgeUpdateSuccessful.current = true;
+    setEdges((els) => els.map((el) => (el.id === oldEdge.id ? { ...el, ...newConnection } : el)));
+  }, [setEdges]);
+
+  // Handle edge update end
+  const onEdgeUpdateEnd = useCallback((_, edge: Edge) => {
+    if (!edgeUpdateSuccessful.current) {
+      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
       
-      return edge;
-    });
-  };
+      // Show toast notification
+      setToast({ message: 'Edge deleted on drop' });
+      setTimeout(() => setToast(null), 3000);
+    }
+    
+    edgeUpdateSuccessful.current = true;
+  }, [setEdges]);
   
   // Handle edge type change
   const handleEdgeTypeChange = useCallback((type: 'default' | 'animated') => {
@@ -313,9 +287,8 @@ function Flow() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onConnectEnd={onConnectEnd}
-        onEdgeUpdate={onEdgeUpdate}
         onEdgeUpdateStart={onEdgeUpdateStart}
+        onEdgeUpdate={onEdgeUpdate}
         onEdgeUpdateEnd={onEdgeUpdateEnd}
         fitView
         attributionPosition="top-right"
@@ -324,6 +297,7 @@ function Flow() {
         connectionLineType={connectionLineType}
         connectionLineStyle={{ stroke: edgeColor, strokeWidth: 2 }}
         className="bg-[#F7F9FB] dark:bg-[#1a1a1a]"
+        deleteKeyCode="Delete"
       >
         <MiniMap zoomable pannable nodeClassName={nodeClassName} />
         <Controls />
