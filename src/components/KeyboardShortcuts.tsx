@@ -136,6 +136,20 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
     }
   }, [getNodes, getEdges, setNodes, setEdges, onShortcut]);
   
+  // Handle undo operation
+  const handleUndo = useCallback(() => {
+    if (onShortcut) {
+      onShortcut('undo');
+    }
+  }, [onShortcut]);
+  
+  // Handle redo operation
+  const handleRedo = useCallback(() => {
+    if (onShortcut) {
+      onShortcut('redo');
+    }
+  }, [onShortcut]);
+  
   // Set up keyboard event listeners
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -170,6 +184,18 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
             event.preventDefault();
             handleSelectAll();
             break;
+          case 'z':
+            event.preventDefault();
+            if (event.shiftKey) {
+              handleRedo();
+            } else {
+              handleUndo();
+            }
+            break;
+          case 'y':
+            event.preventDefault();
+            handleRedo();
+            break;
         }
       }
     };
@@ -179,7 +205,7 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleDelete, handleCopy, handlePaste, handleCut, handleDuplicate, handleSelectAll]);
+  }, [handleDelete, handleCopy, handlePaste, handleCut, handleDuplicate, handleSelectAll, handleUndo, handleRedo]);
   
   // This component doesn't render anything
   return null;

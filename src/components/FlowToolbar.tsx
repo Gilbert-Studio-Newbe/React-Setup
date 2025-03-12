@@ -10,6 +10,18 @@ interface FlowToolbarProps {
 export default function FlowToolbar({ onAction, className = '' }: FlowToolbarProps) {
   const tools = [
     {
+      id: 'undo',
+      label: 'Undo',
+      icon: '↩️',
+      shortcut: '⌘Z',
+    },
+    {
+      id: 'redo',
+      label: 'Redo',
+      icon: '↪️',
+      shortcut: '⌘⇧Z',
+    },
+    {
       id: 'copy',
       label: 'Copy',
       icon: '📋',

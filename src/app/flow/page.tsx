@@ -10,6 +10,8 @@ import {
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
+  Node,
+  Edge,
 } from '@xyflow/react';
 
 import {
@@ -51,11 +53,93 @@ const edgeTypes = {
 
 const nodeClassName = (node: any) => node.type;
 
+// Maximum number of history states to keep
+const MAX_HISTORY_LENGTH = 50;
+
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const selectedElementsRef = useRef<{nodeIds: string[]; edgeIds: string[]}>({ nodeIds: [], edgeIds: [] });
+  
+  // History management
+  const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+  const isHistoryActionRef = useRef(false);
+  
+  // Save current state to history when nodes or edges change
+  useEffect(() => {
+    // Skip if this change was caused by an undo/redo action
+    if (isHistoryActionRef.current) {
+      isHistoryActionRef.current = false;
+      return;
+    }
+    
+    // Create a snapshot of the current state
+    const currentState = {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges))
+    };
+    
+    // If we're not at the end of the history, truncate the future states
+    if (currentHistoryIndex < history.length - 1) {
+      setHistory(prev => prev.slice(0, currentHistoryIndex + 1));
+    }
+    
+    // Add the new state to history
+    setHistory(prev => {
+      const newHistory = [...prev, currentState];
+      // Limit history length
+      if (newHistory.length > MAX_HISTORY_LENGTH) {
+        return newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH);
+      }
+      return newHistory;
+    });
+    
+    // Update the current index
+    setCurrentHistoryIndex(prev => {
+      const newIndex = prev + 1;
+      return newIndex >= MAX_HISTORY_LENGTH ? MAX_HISTORY_LENGTH - 1 : newIndex;
+    });
+  }, [nodes, edges]);
+  
+  // Handle undo action
+  const handleUndo = useCallback(() => {
+    if (currentHistoryIndex > 0) {
+      isHistoryActionRef.current = true;
+      const prevState = history[currentHistoryIndex - 1];
+      setNodes(prevState.nodes);
+      setEdges(prevState.edges);
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+      
+      // Show toast notification
+      setToast({ message: 'Undo successful' });
+      setTimeout(() => setToast(null), 3000);
+    } else {
+      // Show toast notification for no more undo
+      setToast({ message: 'Nothing to undo' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [history, currentHistoryIndex, setNodes, setEdges]);
+  
+  // Handle redo action
+  const handleRedo = useCallback(() => {
+    if (currentHistoryIndex < history.length - 1) {
+      isHistoryActionRef.current = true;
+      const nextState = history[currentHistoryIndex + 1];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+      
+      // Show toast notification
+      setToast({ message: 'Redo successful' });
+      setTimeout(() => setToast(null), 3000);
+    } else {
+      // Show toast notification for no more redo
+      setToast({ message: 'Nothing to redo' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [history, currentHistoryIndex, setNodes, setEdges]);
   
   // Handle selection changes
   const handleSelectionChange = useCallback((nodeIds: string[], edgeIds: string[]) => {
@@ -64,6 +148,15 @@ function Flow() {
   
   // Handle keyboard shortcuts and toolbar actions
   const handleAction = useCallback((action: string, data?: any) => {
+    // Handle undo/redo actions
+    if (action === 'undo') {
+      handleUndo();
+      return;
+    } else if (action === 'redo') {
+      handleRedo();
+      return;
+    }
+    
     // Show toast notification with more detailed information
     let message = `${action.charAt(0).toUpperCase() + action.slice(1)}`;
     
@@ -86,7 +179,7 @@ function Flow() {
     setTimeout(() => {
       setToast(null);
     }, 3000);
-  }, []);
+  }, [handleUndo, handleRedo]);
   
   // Custom connection handler to create animated edges
   const onConnect = useCallback(
