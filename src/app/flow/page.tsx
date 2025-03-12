@@ -96,6 +96,8 @@ function Flow() {
   const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
   const isHistoryActionRef = useRef(false);
+  const nodesJsonRef = useRef('');
+  const edgesJsonRef = useRef('');
   
   // Save current state to history when nodes or edges change
   useEffect(() => {
@@ -105,10 +107,23 @@ function Flow() {
       return;
     }
     
+    // Stringify the current state to compare with previous state
+    const nodesJson = JSON.stringify(nodes);
+    const edgesJson = JSON.stringify(edges);
+    
+    // Only update history if something actually changed
+    if (nodesJson === nodesJsonRef.current && edgesJson === edgesJsonRef.current) {
+      return;
+    }
+    
+    // Update refs with current state
+    nodesJsonRef.current = nodesJson;
+    edgesJsonRef.current = edgesJson;
+    
     // Create a snapshot of the current state
     const currentState = {
-      nodes: JSON.parse(JSON.stringify(nodes)),
-      edges: JSON.parse(JSON.stringify(edges))
+      nodes: JSON.parse(nodesJson),
+      edges: JSON.parse(edgesJson)
     };
     
     // If we're not at the end of the history, truncate the future states
@@ -131,7 +146,7 @@ function Flow() {
       const newIndex = prev + 1;
       return newIndex >= MAX_HISTORY_LENGTH ? MAX_HISTORY_LENGTH - 1 : newIndex;
     });
-  }, [nodes, edges]);
+  }, [nodes, edges, history.length, currentHistoryIndex]);
   
   // Handle undo action
   const handleUndo = useCallback(() => {
