@@ -18,6 +18,9 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'output', label: 'Output Node' },
     { type: 'circle', label: 'Circle Node' },
     { type: 'textinput', label: 'Text Input Node' },
+    { type: 'numberinput', label: 'Number Input Node' },
+    { type: 'costinput', label: 'Cost Input Node' },
+    { type: 'calculation', label: 'Calculation Node' },
     { type: 'tools', label: 'Toolbar Node' },
     { type: 'resizer', label: 'Resizer Node' },
     { type: 'annotation', label: 'Annotation Node' },
@@ -64,6 +67,34 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
       case 'textinput':
         // Text input node doesn't need special data
         data = {};
+        break;
+      case 'numberinput':
+        // Number input node with default configuration
+        data = {
+          label: 'Number Input',
+          value: 0,
+          min: 0,
+          max: 100,
+          step: 1,
+          unit: ''
+        };
+        break;
+      case 'costinput':
+        // Cost input node with default configuration
+        data = {
+          label: 'Cost Input',
+          value: 0,
+          currency: '$',
+          description: 'Enter cost amount'
+        };
+        break;
+      case 'calculation':
+        // Calculation node with default configuration
+        data = {
+          label: 'Calculation',
+          operation: 'add',
+          result: 0
+        };
         break;
       case 'resizer':
         // Add default size for resizer node

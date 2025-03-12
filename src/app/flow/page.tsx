@@ -27,6 +27,9 @@ import ButtonEdge from '@/components/ButtonEdge';
 import NodeSelector from '@/components/NodeSelector';
 import Toast from '@/components/Toast';
 import HelpPanel from '@/components/HelpPanel';
+import NumberInputNode from '@/components/NumberInputNode';
+import CostInputNode from '@/components/CostInputNode';
+import CalculationNode from '@/components/CalculationNode';
 
 const nodeTypes = {
   annotation: AnnotationNode,
@@ -34,6 +37,9 @@ const nodeTypes = {
   resizer: ResizerNode,
   circle: CircleNode,
   textinput: TextInputNode,
+  numberinput: NumberInputNode,
+  costinput: CostInputNode,
+  calculation: CalculationNode,
 };
 
 const edgeTypes = {
