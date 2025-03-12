@@ -22,6 +22,7 @@ import ResizerNode from '@/components/ResizerNode';
 import CircleNode from '@/components/CircleNode';
 import TextInputNode from '@/components/TextInputNode';
 import ButtonEdge from '@/components/ButtonEdge';
+import AnimatedEdge from '@/components/AnimatedEdge';
 import NodeSelector from '@/components/NodeSelector';
 import Toast from '@/components/Toast';
 import HelpPanel from '@/components/HelpPanel';
@@ -45,6 +46,7 @@ const nodeTypes = {
 
 const edgeTypes = {
   button: ButtonEdge,
+  animated: AnimatedEdge,
 };
 
 const nodeClassName = (node: any) => node.type;
@@ -86,9 +88,18 @@ function Flow() {
     }, 3000);
   }, []);
   
+  // Custom connection handler to create animated edges
   const onConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge(params, eds)),
-    [],
+    (params: any) => {
+      const newEdge = {
+        ...params,
+        type: 'animated',
+        label: 'animated edge',
+        animated: true,
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
+    [setEdges],
   );
 
   return (

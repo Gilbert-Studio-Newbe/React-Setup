@@ -69,7 +69,7 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
   
   return (
     <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[200px] font-mono">
-      <div className="mb-2 font-medium">{label}</div>
+      <div className="mb-2 text-base font-medium">{label}</div>
       
       <div className="flex items-center">
         <button 
@@ -104,13 +104,13 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
       <Handle
         type="target"
         position={Position.Top}
-        className="custom-handle bg-[var(--xy-handle-border-color-default)] rounded-sm w-2 h-1 border-none min-w-[2px] min-h-[2px]"
+        className="w-3 h-3 bg-black border-2 border-white rounded-full"
       />
       
       <Handle
         type="source"
         position={Position.Bottom}
-        className="custom-handle bg-[var(--xy-handle-border-color-default)] rounded-sm w-2 h-1 border-none min-w-[2px] min-h-[2px]"
+        className="w-3 h-3 bg-black border-2 border-white rounded-full"
       />
     </div>
   );
