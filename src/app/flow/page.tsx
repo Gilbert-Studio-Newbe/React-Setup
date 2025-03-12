@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   addEdge,
@@ -30,6 +30,9 @@ import HelpPanel from '@/components/HelpPanel';
 import NumberInputNode from '@/components/NumberInputNode';
 import CostInputNode from '@/components/CostInputNode';
 import CalculationNode from '@/components/CalculationNode';
+import KeyboardShortcuts from '@/components/KeyboardShortcuts';
+import SelectionTracker from '@/components/SelectionTracker';
+import FlowToolbar from '@/components/FlowToolbar';
 
 const nodeTypes = {
   annotation: AnnotationNode,
@@ -51,26 +54,19 @@ const nodeClassName = (node: any) => node.type;
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [toast, setToast] = React.useState<{ message: string } | null>(null);
-  const selectedNodesRef = useRef<string[]>([]);
+  const [toast, setToast] = useState<{ message: string } | null>(null);
+  const selectedElementsRef = useRef<{nodeIds: string[]; edgeIds: string[]}>({ nodeIds: [], edgeIds: [] });
   
-  const deletePressed = useKeyPress('Delete');
+  // Handle selection changes
+  const handleSelectionChange = useCallback((nodeIds: string[], edgeIds: string[]) => {
+    selectedElementsRef.current = { nodeIds, edgeIds };
+  }, []);
   
-  // Track selected nodes
-  useOnSelectionChange({
-    onChange: ({ nodes }) => {
-      selectedNodesRef.current = nodes.map(node => node.id);
-    },
-  });
-  
-  // Handle delete key press
-  useEffect(() => {
-    if (deletePressed && selectedNodesRef.current.length > 0) {
-      setNodes(nds => nds.filter(node => !selectedNodesRef.current.includes(node.id)));
-      setToast({ message: `Deleted ${selectedNodesRef.current.length} node(s)` });
-      selectedNodesRef.current = [];
-    }
-  }, [deletePressed, setNodes]);
+  // Handle keyboard shortcuts and toolbar actions
+  const handleAction = useCallback((action: string) => {
+    // Show toast notification
+    setToast({ message: `${action.charAt(0).toUpperCase() + action.slice(1)} operation completed` });
+  }, []);
   
   const onConnect = useCallback(
     (params: any) => setEdges((eds) => addEdge(params, eds)),
@@ -95,8 +91,15 @@ function Flow() {
         <MiniMap zoomable pannable nodeClassName={nodeClassName} />
         <Controls />
         <Background />
+        
+        {/* Utility components for keyboard shortcuts and selection tracking */}
+        <KeyboardShortcuts onShortcut={handleAction} />
+        <SelectionTracker onSelectionChange={handleSelectionChange} />
       </ReactFlow>
+      
+      {/* UI Components */}
       <NodeSelector className="absolute top-4 left-4 z-10" />
+      <FlowToolbar className="absolute top-4 left-[280px] z-10" onAction={handleAction} />
       <HelpPanel className="absolute top-4 right-4 z-10" />
       
       {toast && (
