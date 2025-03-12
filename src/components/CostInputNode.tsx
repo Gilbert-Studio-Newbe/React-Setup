@@ -63,8 +63,8 @@ const CostInputNode: React.FC<NodeProps<CostInputNodeData>> = ({ id, data, selec
   }, [data.value]);
   
   return (
-    <div className={`p-3 rounded-md border ${selected ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-800 shadow-md w-[250px]`}>
-      <div className="mb-2 font-medium text-gray-700 dark:text-gray-300">{label}</div>
+    <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[250px] font-mono">
+      <div className="mb-2 font-medium">{label}</div>
       
       {description && (
         <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">{description}</div>
@@ -81,10 +81,10 @@ const CostInputNode: React.FC<NodeProps<CostInputNodeData>> = ({ id, data, selec
           onChange={handleChange}
           step="0.01"
           min="0"
-          className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white nodrag"
+          className="w-full h-8 px-2 border border-[var(--xy-node-border-default)] focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white nodrag"
         />
         
-        <div className="flex-shrink-0 px-2 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-600 rounded-r-md border-y border-r border-gray-300 dark:border-gray-600">
+        <div className="flex-shrink-0 px-2 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-600 rounded-r-md border-y border-r border-[var(--xy-node-border-default)]">
           {formatCurrency(value)}
         </div>
       </div>

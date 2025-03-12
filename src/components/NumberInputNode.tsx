@@ -68,8 +68,8 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
   }, [data.value]);
   
   return (
-    <div className={`p-3 rounded-md border ${selected ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-800 shadow-md w-[200px]`}>
-      <div className="mb-2 font-medium text-gray-700 dark:text-gray-300">{label}</div>
+    <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[200px] font-mono">
+      <div className="mb-2 font-medium">{label}</div>
       
       <div className="flex items-center">
         <button 
@@ -86,7 +86,7 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
           min={min}
           max={max}
           step={step}
-          className="w-full h-8 px-2 text-center border-y border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white nodrag"
+          className="w-full h-8 px-2 text-center border-y border-[var(--xy-node-border-default)] focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white nodrag"
         />
         
         <button 

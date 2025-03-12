@@ -114,15 +114,15 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
   }, [id, operation, nodes, getEdges, setNodes]);
   
   return (
-    <div className={`p-3 rounded-md border ${selected ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-800 shadow-md w-[200px]`}>
-      <div className="mb-2 font-medium text-gray-700 dark:text-gray-300">{label}</div>
+    <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[200px] font-mono">
+      <div className="mb-2 font-medium">{label}</div>
       
       <div className="mb-3">
         <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Operation</label>
         <select
           value={operation}
           onChange={(e) => updateNodeData(e.target.value as 'add' | 'subtract' | 'multiply' | 'divide')}
-          className="w-full p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white nodrag"
+          className="w-full p-1 border border-[var(--xy-node-border-default)] rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white nodrag"
         >
           <option value="add">Addition (+)</option>
           <option value="subtract">Subtraction (-)</option>
@@ -133,7 +133,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
       
       <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded flex items-center justify-between">
         <span className="text-gray-600 dark:text-gray-300">Result:</span>
-        <span className="font-mono font-medium">
+        <span className="font-medium">
           {getOperationSymbol(operation)} {result.toFixed(2)}
         </span>
       </div>
