@@ -12,6 +12,10 @@ import {
   ReactFlowProvider,
   Node,
   Edge,
+  Connection,
+  ConnectionLineType,
+  Panel,
+  MarkerType,
 } from '@xyflow/react';
 
 import {
@@ -25,6 +29,7 @@ import CircleNode from '@/components/CircleNode';
 import TextInputNode from '@/components/TextInputNode';
 import ButtonEdge from '@/components/ButtonEdge';
 import AnimatedEdge from '@/components/AnimatedEdge';
+import StyledEdge from '@/components/StyledEdge';
 import NodeSelector from '@/components/NodeSelector';
 import Toast from '@/components/Toast';
 import HelpPanel from '@/components/HelpPanel';
@@ -49,6 +54,7 @@ const nodeTypes = {
 const edgeTypes = {
   button: ButtonEdge,
   animated: AnimatedEdge,
+  styled: StyledEdge,
 };
 
 const nodeClassName = (node: any) => node.type;
@@ -56,11 +62,29 @@ const nodeClassName = (node: any) => node.type;
 // Maximum number of history states to keep
 const MAX_HISTORY_LENGTH = 50;
 
+// Edge colors
+const edgeColors = [
+  '#1a73e8', // Blue
+  '#34a853', // Green
+  '#ea4335', // Red
+  '#fbbc05', // Yellow
+  '#9c27b0', // Purple
+  '#00acc1', // Cyan
+  '#ff9800', // Orange
+];
+
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const selectedElementsRef = useRef<{nodeIds: string[]; edgeIds: string[]}>({ nodeIds: [], edgeIds: [] });
+  
+  // Edge configuration
+  const [edgeType, setEdgeType] = useState<'default' | 'straight' | 'step' | 'smoothstep' | 'animated'>('default');
+  const [connectionLineType, setConnectionLineType] = useState<ConnectionLineType>(ConnectionLineType.Bezier);
+  const [edgeColor, setEdgeColor] = useState(edgeColors[0]);
+  const [edgeAnimated, setEdgeAnimated] = useState(false);
+  const [showMarker, setShowMarker] = useState(true);
   
   // History management
   const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
@@ -181,19 +205,102 @@ function Flow() {
     }, 3000);
   }, [handleUndo, handleRedo]);
   
-  // Custom connection handler to create animated edges
+  // Custom connection handler to create edges with the selected type
   const onConnect = useCallback(
-    (params: any) => {
+    (params: Connection) => {
+      // Create a new edge with the current edge type and styling
       const newEdge = {
         ...params,
-        type: 'animated',
-        label: 'animated edge',
-        animated: true,
+        type: 'styled',
+        animated: false,
+        label: `${edgeType} edge`,
+        markerEnd: showMarker ? {
+          type: MarkerType.ArrowClosed,
+          color: edgeColor,
+        } : undefined,
+        data: {
+          type: edgeType,
+          color: edgeColor,
+          strokeWidth: 2,
+          animated: edgeAnimated,
+        },
       };
+      
       setEdges((eds) => addEdge(newEdge, eds));
+      
+      // Show toast notification
+      setToast({ message: 'Connection created' });
+      setTimeout(() => setToast(null), 3000);
+    },
+    [setEdges, edgeType, edgeColor, edgeAnimated, showMarker],
+  );
+  
+  // Handle edge drop outside of a valid connection
+  const onEdgeUpdateEnd = useCallback(
+    (_, edge) => {
+      // Delete the edge when it's dropped outside of a valid connection
+      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+      
+      // Show toast notification
+      setToast({ message: 'Edge deleted on drop' });
+      setTimeout(() => setToast(null), 3000);
     },
     [setEdges],
   );
+  
+  // Handle edge update (reconnection)
+  const onEdgeUpdate = useCallback(
+    (oldEdge, newConnection) => {
+      setEdges((els) => updateEdge(oldEdge, newConnection, els));
+    },
+    [setEdges],
+  );
+  
+  // Helper function to update an edge
+  const updateEdge = (oldEdge: Edge, newConnection: Connection, edges: Edge[]) => {
+    return edges.map((edge) => {
+      if (edge.id === oldEdge.id) {
+        return {
+          ...edge,
+          ...newConnection,
+        };
+      }
+      
+      return edge;
+    });
+  };
+  
+  // Handle edge type change
+  const handleEdgeTypeChange = useCallback((type: 'default' | 'straight' | 'step' | 'smoothstep' | 'animated') => {
+    setEdgeType(type);
+    
+    // Update connection line type based on edge type
+    switch (type) {
+      case 'default':
+        setConnectionLineType(ConnectionLineType.Bezier);
+        break;
+      case 'straight':
+        setConnectionLineType(ConnectionLineType.Straight);
+        break;
+      case 'step':
+        setConnectionLineType(ConnectionLineType.Step);
+        break;
+      case 'smoothstep':
+        setConnectionLineType(ConnectionLineType.SmoothStep);
+        break;
+      case 'animated':
+        setConnectionLineType(ConnectionLineType.Bezier);
+        setEdgeAnimated(true);
+        return;
+    }
+    
+    // Reset animation for non-animated types
+    setEdgeAnimated(false);
+    
+    // Show toast notification
+    setToast({ message: `Edge type set to ${type}` });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   return (
     <div className="w-screen h-screen relative">
@@ -203,15 +310,81 @@ function Flow() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onEdgeUpdate={onEdgeUpdate}
+        onEdgeUpdateEnd={onEdgeUpdateEnd}
         fitView
         attributionPosition="top-right"
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        connectionLineType={connectionLineType}
+        connectionLineStyle={{ stroke: edgeColor, strokeWidth: 2 }}
         className="bg-[#F7F9FB] dark:bg-[#1a1a1a]"
       >
         <MiniMap zoomable pannable nodeClassName={nodeClassName} />
         <Controls />
         <Background />
+        
+        {/* Edge Type Selector Panel */}
+        <Panel position="bottom-center" className="bg-white dark:bg-gray-800 p-3 rounded-t-lg shadow-lg">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Edge Type:</span>
+              <select 
+                value={edgeType}
+                onChange={(e) => handleEdgeTypeChange(e.target.value as any)}
+                className="p-1 border rounded bg-white dark:bg-gray-700 text-sm"
+              >
+                <option value="default">Default (Bezier)</option>
+                <option value="straight">Straight</option>
+                <option value="step">Step</option>
+                <option value="smoothstep">Smooth Step</option>
+                <option value="animated">Animated</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Color:</span>
+              <select 
+                value={edgeColor}
+                onChange={(e) => setEdgeColor(e.target.value)}
+                className="p-1 border rounded bg-white dark:bg-gray-700 text-sm"
+                style={{ color: edgeColor }}
+              >
+                {edgeColors.map((color) => (
+                  <option key={color} value={color} style={{ color }}>
+                    {color}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-sm">
+                <input 
+                  type="checkbox" 
+                  checked={edgeAnimated}
+                  onChange={(e) => setEdgeAnimated(e.target.checked)}
+                  className="rounded"
+                />
+                Animated
+              </label>
+              
+              <label className="flex items-center gap-1 text-sm ml-3">
+                <input 
+                  type="checkbox" 
+                  checked={showMarker}
+                  onChange={(e) => setShowMarker(e.target.checked)}
+                  className="rounded"
+                />
+                Show Arrow
+              </label>
+            </div>
+            
+            <div className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
+              Tip: Drag an edge end and drop it to delete the connection
+            </div>
+          </div>
+        </Panel>
         
         {/* Utility components for keyboard shortcuts and selection tracking */}
         <KeyboardShortcuts onShortcut={handleAction} />
