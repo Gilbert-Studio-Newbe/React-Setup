@@ -18,6 +18,7 @@ import {
   MarkerType,
   useReactFlow,
   useOnSelectionChange,
+  OnConnect,
 } from '@xyflow/react';
 
 import {
@@ -78,6 +79,7 @@ const edgeColors = [
 ];
 
 function Flow() {
+  const reactFlowInstance = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [toast, setToast] = useState<{ message: string } | null>(null);
@@ -92,6 +94,7 @@ function Flow() {
   
   // Track edge updates
   const edgeUpdateSuccessful = useRef(true);
+  const edgeBeingUpdated = useRef<Edge | null>(null);
   
   // History management
   const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
@@ -254,8 +257,8 @@ function Flow() {
   }, [handleUndo, handleRedo]);
   
   // Custom connection handler to create edges with the selected type
-  const onConnect = useCallback(
-    (params: Connection) => {
+  const onConnect: OnConnect = useCallback(
+    (params) => {
       // Create a new edge with the current edge type and styling
       const newEdge = {
         ...params,
@@ -283,24 +286,58 @@ function Flow() {
     [setEdges, edgeType, edgeColor, edgeAnimated, showMarker],
   );
   
-  // Handle edge update
-  const onEdgeUpdate = useCallback((oldEdge: Edge, newConnection: Connection) => {
-    edgeUpdateSuccessful.current = true;
-    setEdges((els) => els.map((el) => (el.id === oldEdge.id ? { ...el, ...newConnection } : el)));
-  }, [setEdges]);
-
-  // Handle edge update end
-  const onEdgeUpdateEnd = useCallback((event: any, edge: Edge) => {
-    if (!edgeUpdateSuccessful.current) {
-      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
-      
-      // Show toast notification
-      setToast({ message: 'Edge deleted on drop' });
-      setTimeout(() => setToast(null), 3000);
-    }
+  // Handle edge deletion when dropped outside a valid target
+  const handleEdgeDelete = useCallback((edge: Edge) => {
+    setEdges((eds) => eds.filter((e) => e.id !== edge.id));
     
-    edgeUpdateSuccessful.current = true;
+    // Show toast notification
+    setToast({ message: 'Edge deleted on drop' });
+    setTimeout(() => setToast(null), 3000);
   }, [setEdges]);
+  
+  // Set up event handlers for edge updates using DOM events
+  useEffect(() => {
+    const handleMouseDown = (event: MouseEvent) => {
+      // Check if we're clicking on an edge handle
+      const target = event.target as HTMLElement;
+      if (target.classList.contains('react-flow__edge-source') || 
+          target.classList.contains('react-flow__edge-target') ||
+          target.closest('.react-flow__edge-source') ||
+          target.closest('.react-flow__edge-target')) {
+        edgeUpdateSuccessful.current = false;
+        
+        // Find the edge being updated
+        const edgeElement = target.closest('.react-flow__edge');
+        if (edgeElement) {
+          const edgeId = edgeElement.getAttribute('data-id');
+          if (edgeId) {
+            const edge = edges.find(e => e.id === edgeId);
+            if (edge) {
+              edgeBeingUpdated.current = edge;
+            }
+          }
+        }
+      }
+    };
+    
+    const handleMouseUp = () => {
+      if (!edgeUpdateSuccessful.current && edgeBeingUpdated.current) {
+        handleEdgeDelete(edgeBeingUpdated.current);
+        edgeBeingUpdated.current = null;
+      }
+      edgeUpdateSuccessful.current = true;
+    };
+    
+    // Add event listeners
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [edges, handleEdgeDelete]);
   
   // Handle edge type change
   const handleEdgeTypeChange = useCallback((type: 'default' | 'animated') => {
@@ -318,21 +355,6 @@ function Flow() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // Set up event handlers for edge updates
-  useEffect(() => {
-    const handleEdgeUpdateStart = () => {
-      edgeUpdateSuccessful.current = false;
-    };
-    
-    // Add event listener for edge update start
-    document.addEventListener('mousedown', handleEdgeUpdateStart);
-    
-    // Clean up
-    return () => {
-      document.removeEventListener('mousedown', handleEdgeUpdateStart);
-    };
-  }, []);
-
   return (
     <div className="w-screen h-screen relative">
       <ReactFlow
@@ -341,8 +363,6 @@ function Flow() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onEdgeUpdate={onEdgeUpdate}
-        onEdgeUpdateEnd={onEdgeUpdateEnd}
         fitView
         attributionPosition="top-right"
         nodeTypes={nodeTypes}
