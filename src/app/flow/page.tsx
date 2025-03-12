@@ -98,11 +98,30 @@ function Flow() {
   const isHistoryActionRef = useRef(false);
   const nodesJsonRef = useRef('');
   const edgesJsonRef = useRef('');
+  const isInitialRender = useRef(true);
+  
+  // Initialize history with initial state
+  useEffect(() => {
+    if (isInitialRender.current) {
+      const initialState = {
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        edges: JSON.parse(JSON.stringify(edges))
+      };
+      setHistory([initialState]);
+      setCurrentHistoryIndex(0);
+      
+      // Update refs with initial state
+      nodesJsonRef.current = JSON.stringify(nodes);
+      edgesJsonRef.current = JSON.stringify(edges);
+      
+      isInitialRender.current = false;
+    }
+  }, [nodes, edges]);
   
   // Save current state to history when nodes or edges change
   useEffect(() => {
-    // Skip if this change was caused by an undo/redo action
-    if (isHistoryActionRef.current) {
+    // Skip if this is the initial render or a history action
+    if (isInitialRender.current || isHistoryActionRef.current) {
       isHistoryActionRef.current = false;
       return;
     }
@@ -127,26 +146,18 @@ function Flow() {
     };
     
     // If we're not at the end of the history, truncate the future states
-    if (currentHistoryIndex < history.length - 1) {
-      setHistory(prev => prev.slice(0, currentHistoryIndex + 1));
-    }
+    const newHistory = currentHistoryIndex < history.length - 1
+      ? [...history.slice(0, currentHistoryIndex + 1), currentState]
+      : [...history, currentState];
     
-    // Add the new state to history
-    setHistory(prev => {
-      const newHistory = [...prev, currentState];
-      // Limit history length
-      if (newHistory.length > MAX_HISTORY_LENGTH) {
-        return newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH);
-      }
-      return newHistory;
-    });
+    // Limit history length
+    const limitedHistory = newHistory.length > MAX_HISTORY_LENGTH
+      ? newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH)
+      : newHistory;
     
-    // Update the current index
-    setCurrentHistoryIndex(prev => {
-      const newIndex = prev + 1;
-      return newIndex >= MAX_HISTORY_LENGTH ? MAX_HISTORY_LENGTH - 1 : newIndex;
-    });
-  }, [nodes, edges, history.length, currentHistoryIndex]);
+    setHistory(limitedHistory);
+    setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, MAX_HISTORY_LENGTH - 1));
+  }, [nodes, edges, history, currentHistoryIndex]);
   
   // Handle undo action
   const handleUndo = useCallback(() => {
@@ -256,11 +267,6 @@ function Flow() {
     [setEdges, edgeType, edgeColor, edgeAnimated, showMarker],
   );
   
-  // Handle edge update start
-  const onEdgeUpdateStart = useCallback(() => {
-    edgeUpdateSuccessful.current = false;
-  }, []);
-
   // Handle edge update
   const onEdgeUpdate = useCallback((oldEdge: Edge, newConnection: Connection) => {
     edgeUpdateSuccessful.current = true;
@@ -268,7 +274,7 @@ function Flow() {
   }, [setEdges]);
 
   // Handle edge update end
-  const onEdgeUpdateEnd = useCallback((_, edge: Edge) => {
+  const onEdgeUpdateEnd = useCallback((event: any, edge: Edge) => {
     if (!edgeUpdateSuccessful.current) {
       setEdges((eds) => eds.filter((e) => e.id !== edge.id));
       
@@ -279,6 +285,11 @@ function Flow() {
     
     edgeUpdateSuccessful.current = true;
   }, [setEdges]);
+  
+  // Handle edge update start - using a custom handler
+  const handleEdgeUpdateStart = useCallback(() => {
+    edgeUpdateSuccessful.current = false;
+  }, []);
   
   // Handle edge type change
   const handleEdgeTypeChange = useCallback((type: 'default' | 'animated') => {
@@ -304,9 +315,9 @@ function Flow() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onEdgeUpdateStart={onEdgeUpdateStart}
         onEdgeUpdate={onEdgeUpdate}
         onEdgeUpdateEnd={onEdgeUpdateEnd}
+        onConnectionStart={handleEdgeUpdateStart}
         fitView
         attributionPosition="top-right"
         nodeTypes={nodeTypes}
