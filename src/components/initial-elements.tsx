@@ -32,15 +32,16 @@ export const nodes: Node[] = [
   {
     id: 'calculation-1',
     type: 'calculation',
-    position: { x: 300, y: 300 },
+    position: { x: 300, y: 250 },
     data: {
       label: 'Calculation',
-      operation: 'multiply',
       input1: 4,
       input2: 6,
-      result: 24
+      operation: 'multiply',
+      result: 24,
+      outputValue: 24
     },
-  },
+  }
 ];
 
 export const edges: Edge[] = [
@@ -69,5 +70,5 @@ export const edges: Edge[] = [
       borderRadius: 8,
       type: 'step'
     },
-  },
+  }
 ]; 
