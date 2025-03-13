@@ -1,16 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Handle, Position, NodeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
+import { NodeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
+import BaseNode, { BaseNodeData } from './BaseNode';
 
-interface CalculationNodeData {
-  label?: string;
+interface CalculationNodeData extends BaseNodeData {
   input1?: number;
   input2?: number;
   operation?: 'add' | 'subtract' | 'multiply' | 'divide';
   result?: number;
-  outputValue?: number;
-  value?: number | string;
 }
 
 const defaultData: CalculationNodeData = {
@@ -152,20 +150,47 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   };
 
   return (
-    <div className={`
-      relative p-4 rounded-lg border-2 
-      ${error ? 'border-red-400' : 'border-gray-300'} 
-      bg-white dark:bg-gray-800 
-      shadow-md w-[280px] 
-      transition-all duration-200 
-      hover:shadow-lg
-      ${error ? 'dark:border-red-600' : 'dark:border-gray-600'}
-    `}>
-      {/* Title */}
-      <div className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">
-        {data.label || 'Calculate'}
-      </div>
-
+    <BaseNode<CalculationNodeData>
+      data={data}
+      isConnectable={isConnectable}
+      error={error}
+      handles={{
+        inputs: [
+          { 
+            id: 'input1', 
+            position: 30, 
+            style: { 
+              background: '#6366f1',
+              border: '2px solid #6366f1',
+              width: '10px',
+              height: '10px'
+            } 
+          },
+          { 
+            id: 'input2', 
+            position: 70, 
+            style: { 
+              background: '#6366f1',
+              border: '2px solid #6366f1',
+              width: '10px',
+              height: '10px'
+            } 
+          }
+        ],
+        outputs: [
+          { 
+            id: 'output', 
+            position: 50,
+            style: { 
+              background: error ? '#ef4444' : '#f59e0b',
+              border: error ? '2px solid #ef4444' : '2px solid #f59e0b',
+              width: '10px',
+              height: '10px'
+            }
+          }
+        ]
+      }}
+    >
       {/* Operation Selector */}
       <div className="mb-4">
         <select
@@ -224,40 +249,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
             </span>
           </div>
         </div>
-        {error && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
       </div>
-
-      {/* Input Handles */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="input1"
-        style={{ top: '30%', background: '#3b82f6' }}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="input2"
-        style={{ top: '70%', background: '#10b981' }}
-        isConnectable={isConnectable}
-      />
-
-      {/* Output Handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="output"
-        style={{ 
-          top: '50%', 
-          background: error ? '#ef4444' : '#3b82f6',
-          transition: 'background-color 0.2s'
-        }}
-        isConnectable={isConnectable}
-      />
-    </div>
+    </BaseNode>
   );
 };
 
