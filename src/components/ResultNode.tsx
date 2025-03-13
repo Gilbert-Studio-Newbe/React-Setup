@@ -10,13 +10,16 @@ interface ResultNodeData {
   description?: string;
 }
 
-const ResultNode = ({ data, isConnectable }: NodeProps<ResultNodeData>) => {
+const ResultNode = ({ data, isConnectable, id }: NodeProps<ResultNodeData>) => {
   const { 
     label = 'Result', 
     value = 0, 
     unit = '', 
     description = ''
   } = data || {};
+
+  // Log the received data for debugging
+  console.log(`ResultNode ${id} render:`, { value, type: typeof value });
 
   // Format the value for display
   const displayValue = typeof value === 'number' 

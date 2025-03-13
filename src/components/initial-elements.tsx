@@ -36,6 +36,8 @@ export const nodes: Node[] = [
     data: {
       label: 'Calculation',
       operation: 'multiply',
+      input1: 4,
+      input2: 6,
       result: 24
     },
   },
@@ -46,6 +48,7 @@ export const edges: Edge[] = [
     id: 'e1-3',
     source: 'numberinput-1',
     target: 'calculation-1',
+    targetHandle: 'input1',
     type: undefined,
     style: { strokeWidth: 1.5, stroke: '#757575' },
     pathOptions: { 
@@ -58,6 +61,7 @@ export const edges: Edge[] = [
     id: 'e2-3',
     source: 'numberinput-2',
     target: 'calculation-1',
+    targetHandle: 'input2',
     type: undefined,
     style: { strokeWidth: 1.5, stroke: '#757575' },
     pathOptions: { 

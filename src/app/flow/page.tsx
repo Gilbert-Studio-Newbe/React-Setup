@@ -503,6 +503,40 @@ function Flow() {
         );
       }
       
+      // If connecting from Calculation to other nodes (e.g., Result)
+      if (sourceNode?.type === 'calculation' && targetNode) {
+        // Check if the source node has a result value
+        if (sourceNode.data.result !== undefined || sourceNode.data.outputValue !== undefined) {
+          // Get the output value (prefer outputValue if available)
+          const outputValue = sourceNode.data.outputValue !== undefined 
+            ? sourceNode.data.outputValue 
+            : sourceNode.data.result;
+          
+          // Log the output value for debugging
+          console.log('Calculation output value:', outputValue, typeof outputValue);
+          
+          setNodes(nds => 
+            nds.map(node => {
+              if (node.id === targetNode.id) {
+                // Handle different target node types
+                if (node.type === 'result') {
+                  console.log('Setting result node value to:', outputValue);
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
+                    }
+                  };
+                }
+                // Add handling for other node types if needed
+              }
+              return node;
+            })
+          );
+        }
+      }
+      
       // If connecting from JSON Display to other nodes (e.g., Result)
       if (sourceNode?.type === 'jsondisplay' && targetNode) {
         // Check if the source node has an output value
@@ -550,15 +584,23 @@ function Flow() {
                     } else {
                       calcValue = 0; // Default to 0 if we can't parse a number
                     }
+                  } else if (calcValue === null || calcValue === undefined) {
+                    calcValue = 0;
                   }
+                  
+                  // Force to number type to ensure proper calculation
+                  calcValue = Number(calcValue);
                   
                   console.log(`Setting calculation ${isInput1 ? 'input1' : 'input2'} to:`, calcValue, typeof calcValue);
                   
+                  // Create a new data object with the updated input and force recalculation
                   return {
                     ...node,
                     data: {
                       ...node.data,
-                      [isInput1 ? 'input1' : 'input2']: calcValue
+                      [isInput1 ? 'input1' : 'input2']: calcValue,
+                      // Remove result to force recalculation
+                      result: undefined
                     }
                   };
                 } else {
@@ -672,6 +714,62 @@ function Flow() {
       return sourceNode?.type === 'jsondisplay';
     });
     
+    // Find all connections from Calculation nodes to other nodes
+    const calculationConnections = edges.filter(edge => {
+      const sourceNode = nodes.find(node => node.id === edge.source);
+      return sourceNode?.type === 'calculation';
+    });
+    
+    // Log calculation connections for debugging
+    if (calculationConnections.length > 0) {
+      console.log('Calculation connections:', calculationConnections.map(conn => ({
+        from: conn.source,
+        to: conn.target,
+        sourceType: nodes.find(n => n.id === conn.source)?.type,
+        targetType: nodes.find(n => n.id === conn.target)?.type
+      })));
+    }
+    
+    // Update the target nodes with the output value from the Calculation nodes
+    if (calculationConnections.length > 0) {
+      setNodes(nds => {
+        let updated = false;
+        const newNodes = nds.map(node => {
+          // Check if this node is a target in any of the Calculation connections
+          const connection = calculationConnections.find(edge => edge.target === node.id);
+          if (connection) {
+            // Find the source node
+            const sourceNode = nodes.find(n => n.id === connection.source);
+            if (sourceNode) {
+              // Get the output value from the calculation node
+              // Try outputValue first, then result if outputValue is not available
+              let outputValue = sourceNode.data.outputValue !== undefined 
+                ? sourceNode.data.outputValue 
+                : sourceNode.data.result;
+              
+              console.log('Calculation node output value:', outputValue, typeof outputValue);
+              
+              // Only update if the value has changed and the target is a result node
+              if (node.type === 'result' && node.data.value !== outputValue) {
+                updated = true;
+                console.log('Updating result node with calculation output:', outputValue);
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    value: outputValue
+                  }
+                };
+              }
+            }
+          }
+          return node;
+        });
+        
+        return updated ? newNodes : nds;
+      });
+    }
+    
     // Update the target nodes with the output value from the JSON Display nodes
     if (jsonDisplayConnections.length > 0) {
       setNodes(nds => {
@@ -725,22 +823,25 @@ function Flow() {
                   } else {
                     calcValue = 0; // Default to 0 if we can't parse a number
                   }
+                } else if (calcValue === null || calcValue === undefined) {
+                  calcValue = 0;
                 }
                 
-                const currentValue = isInput1 ? node.data.input1 : node.data.input2;
-                shouldUpdate = currentValue !== calcValue;
+                // Force to number type to ensure proper calculation
+                calcValue = Number(calcValue);
                 
-                if (shouldUpdate) {
-                  updated = true;
-                  console.log(`Updating calculation ${isInput1 ? 'input1' : 'input2'} to:`, calcValue, typeof calcValue);
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      [isInput1 ? 'input1' : 'input2']: calcValue
-                    }
-                  };
-                }
+                console.log(`Updating calculation ${isInput1 ? 'input1' : 'input2'} to:`, calcValue, typeof calcValue);
+                
+                // Create a new data object with the updated input and force recalculation
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    [isInput1 ? 'input1' : 'input2']: calcValue,
+                    // Remove result to force recalculation
+                    result: undefined
+                  }
+                };
               } else {
                 // Generic approach for other node types
                 shouldUpdate = node.data.value !== outputValue;

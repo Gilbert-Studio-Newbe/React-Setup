@@ -9,6 +9,7 @@ interface CalculationNodeData {
   input1?: number;
   input2?: number;
   result?: number;
+  outputValue?: number;
 }
 
 const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, selected }) => {
@@ -50,11 +51,16 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
       setNodes(nodes => 
         nodes.map(node => {
           if (node.id === id) {
+            // Calculate the result with the new operation
+            const newResult = calculateResultValue(input1, input2, newOperation);
+            
             return {
               ...node,
               data: {
                 ...node.data,
-                operation: newOperation
+                operation: newOperation,
+                result: newResult,
+                outputValue: newResult
               }
             };
           }
@@ -65,10 +71,65 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
     }, 0);
   };
   
+  // Helper function to calculate result value without side effects
+  const calculateResultValue = (value1: number, value2: number, op: string = operation): number => {
+    // Convert inputs to numbers explicitly to handle any type issues
+    const num1 = Number(value1);
+    const num2 = Number(value2);
+    
+    console.log('Raw calculation inputs (after Number conversion):', num1, num2, 'Operation:', op);
+    
+    let calculatedResult = 0;
+    
+    // Perform calculation based on operation
+    switch (op) {
+      case 'add':
+        calculatedResult = num1 + num2;
+        break;
+      case 'subtract':
+        calculatedResult = num1 - num2;
+        break;
+      case 'multiply':
+        calculatedResult = num1 * num2;
+        break;
+      case 'divide':
+        if (num2 !== 0) {
+          calculatedResult = num1 / num2;
+        } else {
+          console.warn('Division by zero attempted');
+          calculatedResult = 0;
+        }
+        break;
+      default:
+        // Default to addition if operation is not recognized
+        calculatedResult = num1 + num2;
+    }
+    
+    console.log('Raw calculation result:', calculatedResult);
+    return calculatedResult;
+  };
+  
   // Calculate the result based on connected nodes
   useEffect(() => {
     // Skip if we're already updating to prevent cascading updates
     if (isUpdatingRef.current) return;
+    
+    // Force calculation when data changes directly
+    if (data.input1 !== input1 || data.input2 !== input2 || data.operation !== operation) {
+      const newInput1 = data.input1 !== undefined ? Number(data.input1) : Number(input1);
+      const newInput2 = data.input2 !== undefined ? Number(data.input2) : Number(input2);
+      const newOperation = data.operation || operation;
+      
+      console.log('Data changed directly, new inputs:', newInput1, newInput2, 'Operation:', newOperation);
+      
+      setInput1(newInput1);
+      setInput2(newInput2);
+      if (data.operation) setOperation(newOperation);
+      
+      // Calculate and update result
+      calculateResult(newInput1, newInput2, newOperation);
+      return;
+    }
     
     // Stringify nodes to compare with previous state
     const nodesJson = JSON.stringify(nodes.map(n => ({ id: n.id, data: n.data })));
@@ -81,8 +142,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
     const incomingEdges = edges.filter(edge => edge.target === id);
     
     if (incomingEdges.length === 0) {
-      // No connections, keep current inputs but set result to 0
-      calculateResult(input1, input2);
+      // No connections, keep current inputs but recalculate result
+      calculateResult(input1, input2, operation);
       return;
     }
     
@@ -100,7 +161,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
       }
       
       // Determine which input to update based on the target handle
-      const isInput1 = edge.targetHandle === 'input1' || !edge.targetHandle;
+      const isInput1 = edge.targetHandle === 'input1';
       
       // Extract value from source node, checking multiple possible properties
       let rawValue;
@@ -126,16 +187,21 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
         console.log('No suitable value found, using 0');
       }
       
-      // Ensure the value is a number
-      let numericValue: number;
-      if (typeof rawValue === 'string') {
+      // Ensure the value is a number - use Number() directly for consistent conversion
+      let numericValue = Number(rawValue);
+      
+      // If Number() returns NaN, try to extract numeric value from string
+      if (isNaN(numericValue) && typeof rawValue === 'string') {
         // Try to extract numeric value from string (remove any units)
         const cleanValue = rawValue.replace(/[^\d.-]/g, '');
-        const parsed = parseFloat(cleanValue);
-        numericValue = !isNaN(parsed) ? parsed : 0;
+        numericValue = parseFloat(cleanValue) || 0;
         console.log('Parsed string value:', rawValue, 'to number:', numericValue);
-      } else {
-        numericValue = typeof rawValue === 'number' ? rawValue : 0;
+      }
+      
+      // If still NaN, use 0
+      if (isNaN(numericValue)) {
+        numericValue = 0;
+        console.log('Value is NaN after parsing, using 0');
       }
       
       // Update the appropriate input
@@ -150,44 +216,28 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
       }
     });
     
-    // Update state with new input values
-    if (input1Set) setInput1(newInput1);
-    if (input2Set) setInput2(newInput2);
+    // Always recalculate the result when this effect runs
+    // This ensures the calculation happens even if inputs haven't changed
+    console.log('Calling calculateResult with:', newInput1, newInput2, operation);
+    calculateResult(newInput1, newInput2, operation);
     
-    // Calculate the result based on inputs and operation
-    calculateResult(newInput1, newInput2);
-    
-  }, [id, operation, getEdges, setNodes, nodes]);
+  }, [id, operation, getEdges, setNodes, nodes, data]);
   
   // Calculate result based on inputs and operation
-  const calculateResult = (value1: number, value2: number) => {
-    let calculatedResult = 0;
+  const calculateResult = (value1: number, value2: number, op: string = operation) => {
+    // Convert inputs to numbers explicitly
+    const num1 = Number(value1);
+    const num2 = Number(value2);
     
-    console.log(`Calculating ${operation} with inputs:`, value1, value2);
+    console.log('Calculation inputs after explicit Number conversion:', num1, num2);
     
-    switch (operation) {
-      case 'add':
-        calculatedResult = value1 + value2;
-        break;
-      case 'subtract':
-        calculatedResult = value1 - value2;
-        break;
-      case 'multiply':
-        calculatedResult = value1 * value2;
-        break;
-      case 'divide':
-        if (value2 !== 0) {
-          calculatedResult = value1 / value2;
-        } else {
-          console.warn('Division by zero attempted');
-          calculatedResult = 0;
-        }
-        break;
-    }
+    // Calculate result
+    const calculatedResult = calculateResultValue(num1, num2, op);
     
-    console.log('Calculation result:', calculatedResult, 'Operation:', operation);
+    console.log(`Calculating ${op} with inputs:`, num1, num2);
+    console.log('Final calculation result:', calculatedResult, 'Operation:', op);
     
-    // Update result
+    // Update local state with the result
     setResult(calculatedResult);
     
     // Prevent cascading updates
@@ -202,9 +252,11 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
               ...node,
               data: {
                 ...node.data,
-                input1: value1,
-                input2: value2,
-                result: calculatedResult
+                input1: num1,
+                input2: num2,
+                operation: op,
+                result: calculatedResult,
+                outputValue: calculatedResult // Always set outputValue for connections
               }
             };
           }
@@ -215,6 +267,71 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
     }, 0);
   };
   
+  // Calculate the current result directly in the render method
+  const currentResult = calculateResultValue(input1, input2, operation);
+  
+  // Log the current result and data for debugging
+  console.log(`CalculationNode ${id} render:`, { 
+    currentResult, 
+    result, 
+    input1, 
+    input2, 
+    operation,
+    'data.outputValue': data.outputValue,
+    'data.result': data.result
+  });
+  
+  // Ensure the node data is updated with the current result
+  useEffect(() => {
+    // Skip if we're already updating to prevent cascading updates
+    if (isUpdatingRef.current) return;
+    
+    // Update the node data with the current result
+    setNodes(nodes => {
+      // First update this node
+      const updatedNodes = nodes.map(node => {
+        if (node.id === id && node.data.result !== currentResult) {
+          console.log('Updating node data with current result:', currentResult);
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              result: currentResult,
+              outputValue: currentResult // Ensure outputValue is set for connections
+            }
+          };
+        }
+        return node;
+      });
+      
+      // Then find any connected result nodes and update them
+      const edges = getEdges();
+      const outgoingEdges = edges.filter(edge => edge.source === id);
+      
+      if (outgoingEdges.length > 0) {
+        console.log('Found outgoing edges from calculation node:', outgoingEdges);
+        
+        return updatedNodes.map(node => {
+          // Check if this node is connected to our calculation node
+          const connection = outgoingEdges.find(edge => edge.target === node.id);
+          if (connection && node.type === 'result') {
+            console.log('Updating connected result node with value:', currentResult);
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                value: currentResult
+              }
+            };
+          }
+          return node;
+        });
+      }
+      
+      return updatedNodes;
+    });
+  }, [currentResult, id, setNodes, getEdges]);
+
   return (
     <div className="p-4 rounded-md border-2 border-black bg-white dark:bg-gray-800 shadow-md w-[250px] font-mono dark:border-gray-600">
       <div className="mb-3 text-lg font-bold text-black dark:text-white">{label}</div>
@@ -233,10 +350,21 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
         </select>
       </div>
       
+      <div className="mb-3">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Input 1:</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{input1}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Input 2:</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{input2}</span>
+        </div>
+      </div>
+      
       <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md border border-gray-200 dark:border-gray-600 flex items-center justify-between">
         <span className="text-gray-700 dark:text-gray-300 font-medium">Result:</span>
         <span className="font-bold text-black dark:text-white">
-          {getOperationSymbol(operation)} {result.toFixed(2)}
+          {getOperationSymbol(operation)} {currentResult.toFixed(2)}
         </span>
       </div>
       
