@@ -104,13 +104,25 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
       <Handle
         type="target"
         position={Position.Top}
-        className="w-2 h-4 !bg-black dark:!bg-gray-400 border-none"
+        style={{ 
+          background: '#6366f1', // Indigo color
+          width: '10px', 
+          height: '10px',
+          border: '2px solid #6366f1'
+        }}
+        className="connectionindicator"
       />
       
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-2 h-4 !bg-black dark:!bg-gray-400 border-none"
+        style={{ 
+          background: '#f59e0b', // Amber color
+          width: '10px', 
+          height: '10px',
+          border: '2px solid #f59e0b'
+        }}
+        className="connectionindicator"
       />
     </div>
   );

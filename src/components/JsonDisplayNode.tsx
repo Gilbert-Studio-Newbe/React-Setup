@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useState, useEffect, useMemo } from 'react';
+import React, { memo, useState, useEffect, useMemo, useCallback } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
 
 interface Parameter {
@@ -46,6 +46,98 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
   const [outputValue, setOutputValue] = useState<any>(null);
   const [outputMode, setOutputMode] = useState<'raw' | 'formatted' | 'withUnits'>(initialOutputMode);
   
+  // Helper function to process a value based on the output mode - defined with useCallback before it's used
+  const processValueForOutputMode = useCallback((value: any, valueType: string, mode: 'raw' | 'formatted' | 'withUnits'): any => {
+    if (value === undefined || value === null) {
+      console.log('Warning: Attempting to process undefined or null value');
+      return mode === 'raw' ? 0 : '0.00';
+    }
+    
+    let processedValue = value;
+    
+    // First, ensure we have the raw numeric value if it's a string with units
+    if (typeof value === 'string' && valueType && valueType.toLowerCase() !== 'string') {
+      // Only try to convert to number if it's not explicitly a string type
+      const cleanValue = value.replace(/[^\d.-]/g, '');
+      const parsed = parseFloat(cleanValue);
+      if (!isNaN(parsed)) {
+        processedValue = parsed;
+      }
+    }
+    
+    // Now apply the output mode
+    let finalValue;
+    switch (mode) {
+      case 'raw':
+        // For string type, preserve the string value
+        if (valueType && valueType.toLowerCase() === 'string') {
+          finalValue = value;
+        } else {
+          // For numeric types, ensure it's a number if possible
+          finalValue = typeof processedValue === 'number' ? processedValue : 
+                      (typeof processedValue === 'string' ? parseFloat(processedValue) || processedValue : value);
+        }
+        break;
+      case 'formatted':
+        // Format the value based on its type (without units)
+        if (typeof processedValue === 'number') {
+          switch (valueType && valueType.toLowerCase()) {
+            case 'length':
+            case 'real number':
+              finalValue = processedValue.toFixed(2);
+              break;
+            case 'angle':
+              finalValue = processedValue.toFixed(4);
+              break;
+            default:
+              finalValue = processedValue;
+          }
+        } else {
+          // For non-numeric values, just use the original value
+          finalValue = value;
+        }
+        break;
+      case 'withUnits':
+        // Format the value with units
+        if (typeof processedValue === 'number') {
+          switch (valueType && valueType.toLowerCase()) {
+            case 'length':
+              finalValue = `${processedValue.toFixed(2)} m`;
+              break;
+            case 'angle':
+              finalValue = `${processedValue.toFixed(4)} rad`;
+              break;
+            case 'real number':
+              finalValue = processedValue.toFixed(2);
+              break;
+            default:
+              finalValue = processedValue;
+          }
+        } else {
+          // For non-numeric values, just use the original value
+          finalValue = value;
+        }
+        break;
+      default:
+        finalValue = processedValue;
+    }
+    
+    console.log('Processed value for output mode:', mode, 'Value:', finalValue, 'Type:', typeof finalValue);
+    return finalValue;
+  }, []);
+  
+  // Process and update the output value based on the selected mode - defined with useCallback before it's used
+  const updateOutputValue = useCallback((value: any, valueType: string) => {
+    if (value === undefined || valueType === undefined) {
+      console.log('Warning: Attempting to update with undefined value or type');
+      return;
+    }
+    
+    const finalValue = processValueForOutputMode(value, valueType, outputMode);
+    console.log('Output value updated:', finalValue, 'Type:', typeof finalValue, 'Mode:', outputMode, 'ValueType:', valueType);
+    setOutputValue(finalValue);
+  }, [outputMode, processValueForOutputMode]);
+  
   // Update local state when jsonData changes from props
   useEffect(() => {
     if (jsonData) {
@@ -59,6 +151,65 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       setSelectedParamId(selectedParameter);
     }
   }, [selectedParameter]);
+  
+  // Get the currently selected parameter
+  const selectedParam = useMemo(() => {
+    if (!localJsonData?.parameters || !selectedParamId) return null;
+    return localJsonData.parameters.find(p => p.id === selectedParamId) || null;
+  }, [localJsonData, selectedParamId]);
+  
+  // Update the node's data when outputMode changes
+  useEffect(() => {
+    if (id) {
+      console.log('Output mode changed to:', outputMode);
+      setNodes((nds) => 
+        nds.map((node) => {
+          if (node.id === id) {
+            if (node.data.outputMode !== outputMode) {
+              console.log('Updating node output mode:', node.id, outputMode);
+              
+              // If we have a selected parameter, immediately update the output value with the new mode
+              if (selectedParam) {
+                const currentValue = editedValues[selectedParam.id] !== undefined 
+                  ? editedValues[selectedParam.id] 
+                  : selectedParam.value;
+                
+                // Process the value based on the new output mode
+                const updatedValue = processValueForOutputMode(currentValue, selectedParam.valueType, outputMode);
+                
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    outputMode: outputMode,
+                    outputValue: updatedValue
+                  }
+                };
+              }
+              
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  outputMode: outputMode
+                }
+              };
+            }
+          }
+          return node;
+        })
+      );
+      
+      // If we have a selected parameter, update the output value with the new mode
+      if (selectedParam) {
+        const currentValue = editedValues[selectedParam.id] !== undefined 
+          ? editedValues[selectedParam.id] 
+          : selectedParam.value;
+        
+        updateOutputValue(currentValue, selectedParam.valueType);
+      }
+    }
+  }, [outputMode, id, setNodes, selectedParam, editedValues, processValueForOutputMode, updateOutputValue]);
   
   // Update the node's data when outputValue changes
   useEffect(() => {
@@ -106,28 +257,6 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     }
   }, [outputValue, id, setNodes, outputMode]);
   
-  // Update the node's data when outputMode changes
-  useEffect(() => {
-    if (id) {
-      setNodes((nds) => 
-        nds.map((node) => {
-          if (node.id === id) {
-            if (node.data.outputMode !== outputMode) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  outputMode: outputMode
-                }
-              };
-            }
-          }
-          return node;
-        })
-      );
-    }
-  }, [outputMode, id, setNodes]);
-  
   // Call onChange when edited values change
   useEffect(() => {
     if (onChange && selectedParamId && editedValues[selectedParamId] !== undefined) {
@@ -137,12 +266,6 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       setOutputValue(editedValues[selectedParamId]);
     }
   }, [editedValues, selectedParamId, onChange]);
-  
-  // Get the currently selected parameter
-  const selectedParam = useMemo(() => {
-    if (!localJsonData?.parameters || !selectedParamId) return null;
-    return localJsonData.parameters.find(p => p.id === selectedParamId) || null;
-  }, [localJsonData, selectedParamId]);
   
   // Filter parameters based on filter term
   const filteredParameters = useMemo(() => {
@@ -157,7 +280,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
   }, [localJsonData, filterTerm]);
   
   // Handle parameter selection
-  const handleSelectParameter = (paramId: string) => {
+  const handleSelectParameter = useCallback((paramId: string) => {
     setSelectedParamId(paramId);
     
     // Find the parameter
@@ -172,85 +295,15 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       // Auto-collapse when a parameter is selected
       setIsCollapsed(true);
     }
-  };
-  
-  // Process and update the output value based on the selected mode
-  const updateOutputValue = (value: any, valueType: string) => {
-    let processedValue = value;
-    
-    // First, ensure we have the raw numeric value if it's a string with units
-    if (typeof value === 'string' && valueType.toLowerCase() !== 'string') {
-      // Only try to convert to number if it's not explicitly a string type
-      const cleanValue = value.replace(/[^\d.-]/g, '');
-      const parsed = parseFloat(cleanValue);
-      if (!isNaN(parsed)) {
-        processedValue = parsed;
-      }
-    }
-    
-    // Now apply the output mode
-    let finalValue;
-    switch (outputMode) {
-      case 'raw':
-        // For string type, preserve the string value
-        if (valueType.toLowerCase() === 'string') {
-          finalValue = value;
-        } else {
-          // For numeric types, ensure it's a number if possible
-          finalValue = typeof processedValue === 'number' ? processedValue : 
-                      (typeof processedValue === 'string' ? parseFloat(processedValue) || processedValue : value);
-        }
-        break;
-      case 'formatted':
-        // Format the value based on its type (without units)
-        if (typeof processedValue === 'number') {
-          switch (valueType.toLowerCase()) {
-            case 'length':
-            case 'real number':
-              finalValue = processedValue.toFixed(2);
-              break;
-            case 'angle':
-              finalValue = processedValue.toFixed(4);
-              break;
-            default:
-              finalValue = processedValue;
-          }
-        } else {
-          // For non-numeric values, just use the original value
-          finalValue = value;
-        }
-        break;
-      case 'withUnits':
-        // Format the value with units
-        if (typeof processedValue === 'number') {
-          switch (valueType.toLowerCase()) {
-            case 'length':
-              finalValue = `${processedValue.toFixed(2)} m`;
-              break;
-            case 'angle':
-              finalValue = `${processedValue.toFixed(4)} rad`;
-              break;
-            case 'real number':
-              finalValue = processedValue.toFixed(2);
-              break;
-            default:
-              finalValue = processedValue;
-          }
-        } else {
-          // For non-numeric values, just use the original value
-          finalValue = value;
-        }
-        break;
-      default:
-        finalValue = processedValue;
-    }
-    
-    console.log('Output value updated:', finalValue, 'Type:', typeof finalValue, 'Mode:', outputMode, 'ValueType:', valueType);
-    setOutputValue(finalValue);
-  };
+  }, [localJsonData, editedValues, updateOutputValue]);
   
   // Handle value change based on parameter type
-  const handleValueChange = (paramId: string, newValue: any, valueType: string) => {
+  const handleValueChange = useCallback((paramId: string, newValue: any, valueType: string) => {
+    if (paramId === undefined || valueType === undefined) {
+      console.log('Warning: Attempting to handle value change with undefined paramId or valueType');
+      return;
+    }
+    
     let processedValue = newValue;
     
     // Process value based on type
@@ -280,21 +333,13 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     
     // Update output value based on the current output mode
     updateOutputValue(processedValue, valueType);
-  };
+  }, [updateOutputValue]);
   
   // Handle output mode change
-  const handleOutputModeChange = (mode: 'raw' | 'formatted' | 'withUnits') => {
+  const handleOutputModeChange = useCallback((mode: 'raw' | 'formatted' | 'withUnits') => {
+    console.log('Output mode change requested:', mode);
     setOutputMode(mode);
-    
-    // Update the output value with the new mode if we have a selected parameter
-    if (selectedParam) {
-      const currentValue = editedValues[selectedParam.id] !== undefined 
-        ? editedValues[selectedParam.id] 
-        : selectedParam.value;
-      
-      updateOutputValue(currentValue, selectedParam.valueType);
-    }
-  };
+  }, []);
   
   // Toggle collapse state
   const toggleCollapse = () => {
@@ -507,19 +552,31 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
             <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Output Mode:</div>
             <div className="flex gap-2">
               <button
-                className={`px-2 py-1 text-xs rounded ${outputMode === 'raw' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}
+                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                  outputMode === 'raw' 
+                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
                 onClick={() => handleOutputModeChange('raw')}
               >
                 Raw
               </button>
               <button
-                className={`px-2 py-1 text-xs rounded ${outputMode === 'formatted' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}
+                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                  outputMode === 'formatted' 
+                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
                 onClick={() => handleOutputModeChange('formatted')}
               >
                 Formatted
               </button>
               <button
-                className={`px-2 py-1 text-xs rounded ${outputMode === 'withUnits' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}
+                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                  outputMode === 'withUnits' 
+                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
                 onClick={() => handleOutputModeChange('withUnits')}
               >
                 With Units
@@ -631,24 +688,36 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
                     </div>
                   </div>
                   
-                  {/* Output Mode Selection */}
+                  {/* Output Mode Selection in expanded view */}
                   <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
                     <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Output Mode:</div>
                     <div className="flex gap-2">
                       <button
-                        className={`px-2 py-1 text-xs rounded ${outputMode === 'raw' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}
+                        className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                          outputMode === 'raw' 
+                            ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
                         onClick={() => handleOutputModeChange('raw')}
                       >
                         Raw
                       </button>
                       <button
-                        className={`px-2 py-1 text-xs rounded ${outputMode === 'formatted' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}
+                        className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                          outputMode === 'formatted' 
+                            ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
                         onClick={() => handleOutputModeChange('formatted')}
                       >
                         Formatted
                       </button>
                       <button
-                        className={`px-2 py-1 text-xs rounded ${outputMode === 'withUnits' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}
+                        className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                          outputMode === 'withUnits' 
+                            ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
                         onClick={() => handleOutputModeChange('withUnits')}
                       >
                         With Units
