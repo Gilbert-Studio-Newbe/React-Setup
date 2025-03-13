@@ -96,6 +96,17 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
     // Find all edges that connect to this node
     const incomingEdges = edges.filter(edge => edge.target === id);
 
+    // Reset inputs that have no connected edges
+    const hasInput1Connection = incomingEdges.some(edge => edge.targetHandle === 'input1');
+    const hasInput2Connection = incomingEdges.some(edge => edge.targetHandle === 'input2');
+
+    if (!hasInput1Connection) {
+      setInput1(0);
+    }
+    if (!hasInput2Connection) {
+      setInput2(0);
+    }
+
     // Process each incoming connection
     incomingEdges.forEach(edge => {
       const sourceNode = nodes.find(node => node.id === edge.source);
