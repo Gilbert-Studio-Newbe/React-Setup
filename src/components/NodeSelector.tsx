@@ -21,6 +21,11 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'numberinput', label: 'Number Input Node' },
     { type: 'costinput', label: 'Cost Input Node' },
     { type: 'calculation', label: 'Calculation Node' },
+    { type: 'result', label: 'Result Node' },
+    { type: 'ifcimport', label: 'IFC Import Node' },
+    { type: 'jsonload', label: 'JSON Load Node' },
+    { type: 'jsondisplay', label: 'JSON Display Node' },
+    { type: 'debugdisplay', label: 'Debug Display Node' },
     { type: 'tools', label: 'Toolbar Node' },
     { type: 'resizer', label: 'Resizer Node' },
     { type: 'annotation', label: 'Annotation Node' },
@@ -96,6 +101,52 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
           result: 0
         };
         break;
+      case 'result':
+        // Result node with default configuration
+        data = {
+          label: 'Result',
+          value: 0,
+          unit: '',
+          description: 'Final calculation result'
+        };
+        break;
+      case 'ifcimport':
+        // IFC Import node with default configuration
+        data = {
+          label: 'IFC Import',
+          onFileImport: (file: File) => {
+            console.log('IFC file imported:', file.name);
+          }
+        };
+        break;
+      case 'jsonload':
+        // JSON Load node with default configuration
+        data = {
+          label: 'JSON Load',
+          jsonData: null, // Initialize with null to ensure the property exists
+          onJsonLoad: (jsonData: any) => {
+            console.log('JSON data loaded:', jsonData);
+          }
+        };
+        break;
+      case 'jsondisplay':
+        // JSON Display node with default configuration
+        data = {
+          label: 'JSON Display',
+          onChange: (paramId: string, newValue: any) => {
+            console.log('Parameter updated:', paramId, newValue);
+          },
+          outputMode: 'raw' // Default to raw output mode
+        };
+        break;
+      case 'debugdisplay':
+        // Debug Display node with default configuration
+        data = {
+          label: 'Debug Display',
+          value: null,
+          description: 'Connect to any node to see its data'
+        };
+        break;
       case 'resizer':
         // Add default size for resizer node
         style = { width: 150, height: 100 };
@@ -118,13 +169,13 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
   return (
     <>
       <div className={`bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg ${className}`}>
-        <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">Add Node</h3>
-        <div className="grid grid-cols-2 gap-2">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Add Node</h3>
+        <div className="grid grid-cols-2 gap-3">
           {nodeTypes.map((node) => (
             <button
               key={node.type}
               onClick={() => addNode(node.type)}
-              className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+              className="px-4 py-3 bg-white hover:bg-gray-50 text-black border-2 border-black rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
             >
               {node.label}
             </button>

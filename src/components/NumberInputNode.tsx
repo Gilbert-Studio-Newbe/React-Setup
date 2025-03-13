@@ -68,12 +68,12 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
   }, [data.value]);
   
   return (
-    <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[200px] font-mono">
-      <div className="mb-2 text-base font-medium">{label}</div>
+    <div className="p-4 rounded-md border-2 border-black bg-white dark:bg-gray-800 shadow-md w-[220px] font-mono dark:border-gray-600">
+      <div className="mb-3 text-lg font-bold text-black dark:text-white">{label}</div>
       
       <div className="flex items-center">
         <button 
-          className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-l-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-l-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-black dark:text-white font-bold"
           onClick={handleDecrement}
         >
           -
@@ -86,31 +86,31 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
           min={min}
           max={max}
           step={step}
-          className="w-full h-8 px-2 text-center border-y border-[var(--xy-node-border-default)] focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white nodrag"
+          className="w-full h-8 px-2 text-center border-y border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-gray-400 dark:bg-gray-700 dark:text-white nodrag"
         />
         
         <button 
-          className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-r-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-black dark:text-white font-bold"
           onClick={handleIncrement}
         >
           +
         </button>
         
         {unit && (
-          <span className="ml-2 text-gray-600 dark:text-gray-400">{unit}</span>
+          <span className="ml-2 text-gray-700 dark:text-gray-300">{unit}</span>
         )}
       </div>
       
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 bg-black border-2 border-white rounded-full"
+        className="w-2 h-4 !bg-black dark:!bg-gray-400 border-none"
       />
       
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 bg-black border-2 border-white rounded-full"
+        className="w-2 h-4 !bg-black dark:!bg-gray-400 border-none"
       />
     </div>
   );

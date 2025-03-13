@@ -64,24 +64,30 @@ export default memo(({ id }: TextInputNodeProps) => {
   };
   
   return (
-    <div className="w-[150px] font-mono text-left">
+    <div className="w-[200px] font-mono text-left bg-white border-2 border-black p-4 rounded-md shadow-md dark:bg-gray-800 dark:border-gray-600">
+      <div className="text-lg font-bold mb-2 text-black dark:text-white">Text Input</div>
       {dimensionAttrs.map((attr) => (
         <Fragment key={attr}>
-          <label>Node {attr}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Node {attr}</label>
           <input
             type="number"
             value={dimensions ? parseInt(dimensions[attr as keyof typeof dimensions].toString()) : 0}
             onChange={updateDimension(attr)}
-            className="w-full box-border my-[5px] mx-0 rounded border border-[var(--xy-node-border-default)] nodrag appearance-textfield"
+            className="w-full box-border mb-3 p-2 rounded border border-gray-300 dark:border-gray-600 nodrag focus:ring-2 focus:ring-black dark:focus:ring-gray-400 focus:border-transparent"
             disabled={!dimensions}
           />
         </Fragment>
       ))}
-      {!dimensionAttrs && 'no node connected'}
+      {!dimensionAttrs && <div className="text-gray-500 dark:text-gray-400">No node connected</div>}
       <Handle 
         type="target" 
         position={Position.Top} 
-        className="custom-handle bg-[var(--xy-handle-border-color-default)] rounded-sm w-2 h-1 border-none min-w-[2px] min-h-[2px]" 
+        className="!bg-black dark:!bg-gray-400 rounded-sm w-2 h-4 border-none min-w-[2px] min-h-[4px]" 
+      />
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className="!bg-black dark:!bg-gray-400 rounded-sm w-2 h-4 border-none min-w-[2px] min-h-[4px]" 
       />
     </div>
   );

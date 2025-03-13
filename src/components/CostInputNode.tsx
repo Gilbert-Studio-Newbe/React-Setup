@@ -63,15 +63,15 @@ const CostInputNode: React.FC<NodeProps<CostInputNodeData>> = ({ id, data, selec
   }, [data.value]);
   
   return (
-    <div className="p-3 rounded-md border border-[var(--xy-node-border-default)] bg-white dark:bg-gray-800 shadow-[var(--xy-node-boxshadow-default)] w-[250px] font-mono">
-      <div className="mb-2 text-base font-medium">{label}</div>
+    <div className="p-4 rounded-md border-2 border-black bg-white dark:bg-gray-800 shadow-md w-[250px] font-mono dark:border-gray-600">
+      <div className="mb-2 text-lg font-bold text-black dark:text-white">{label}</div>
       
       {description && (
-        <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">{description}</div>
+        <div className="mb-3 text-sm text-gray-700 dark:text-gray-300">{description}</div>
       )}
       
       <div className="flex items-center">
-        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-l-md">
+        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-l-md border border-gray-300 dark:border-gray-600 text-black dark:text-white font-medium">
           {currency}
         </div>
         
@@ -81,10 +81,10 @@ const CostInputNode: React.FC<NodeProps<CostInputNodeData>> = ({ id, data, selec
           onChange={handleChange}
           step="0.01"
           min="0"
-          className="w-full h-8 px-2 border border-[var(--xy-node-border-default)] focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white nodrag"
+          className="w-full h-10 px-3 border-y border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-gray-400 dark:bg-gray-700 dark:text-white nodrag"
         />
         
-        <div className="flex-shrink-0 px-2 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-600 rounded-r-md border-y border-r border-[var(--xy-node-border-default)]">
+        <div className="flex-shrink-0 px-3 h-10 flex items-center justify-center bg-gray-50 dark:bg-gray-600 rounded-r-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
           {formatCurrency(value)}
         </div>
       </div>
@@ -92,13 +92,13 @@ const CostInputNode: React.FC<NodeProps<CostInputNodeData>> = ({ id, data, selec
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 bg-black border-2 border-white rounded-full"
+        className="w-2 h-4 !bg-black dark:!bg-gray-400 border-none"
       />
       
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 bg-black border-2 border-white rounded-full"
+        className="w-2 h-4 !bg-black dark:!bg-gray-400 border-none"
       />
     </div>
   );

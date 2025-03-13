@@ -33,6 +33,7 @@ import TextInputNode from '@/components/TextInputNode';
 // Import only the edge types we'll actually use
 import ButtonEdge from '@/components/ButtonEdge';
 import AnimatedEdge from '@/components/AnimatedEdge';
+import StyledEdge from '@/components/StyledEdge';
 import NodeSelector from '@/components/NodeSelector';
 import Toast from '@/components/Toast';
 import HelpPanel from '@/components/HelpPanel';
@@ -42,6 +43,12 @@ import CalculationNode from '@/components/CalculationNode';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import SelectionTracker from '@/components/SelectionTracker';
 import FlowToolbar from '@/components/FlowToolbar';
+import TailwindNode from '@/components/TailwindNode';
+import ResultNode from '@/components/ResultNode';
+import IfcImportNode from '@/components/IfcImportNode';
+import JsonLoadNode from '@/components/JsonLoadNode';
+import JsonDisplayNode from '@/components/JsonDisplayNode';
+import DebugDisplayNode from '@/components/DebugDisplayNode';
 
 const nodeTypes = {
   annotation: AnnotationNode,
@@ -52,12 +59,19 @@ const nodeTypes = {
   numberinput: NumberInputNode,
   costinput: CostInputNode,
   calculation: CalculationNode,
+  tailwind: TailwindNode,
+  result: ResultNode,
+  ifcimport: IfcImportNode,
+  jsonload: JsonLoadNode,
+  jsondisplay: JsonDisplayNode,
+  debugdisplay: DebugDisplayNode,
 };
 
 // Only keep the edge types we need
 const edgeTypes = {
   button: ButtonEdge,
   animated: AnimatedEdge,
+  default: StyledEdge,
 };
 
 const nodeClassName = (node: any) => node.type;
@@ -96,18 +110,85 @@ const safeClone = (obj: any) => {
   }
 };
 
+// Initial Tailwind nodes for demonstration
+const initialTailwindNodes: Node[] = [
+  {
+    id: 'tailwind-1',
+    type: 'tailwind',
+    position: { x: 100, y: 100 },
+    data: { label: 'Tailwind Node 1', value: 123 },
+  },
+  {
+    id: 'tailwind-2',
+    type: 'tailwind',
+    position: { x: 400, y: 100 },
+    data: { label: 'Tailwind Node 2' },
+  },
+  {
+    id: 'tailwind-3',
+    type: 'tailwind',
+    position: { x: 250, y: 250 },
+    data: { label: 'Tailwind Node 3', value: 456 },
+  },
+];
+
+// SavePanel component for saving and loading flows
+const SavePanel = ({ 
+  onSave, 
+  onLoad, 
+  onLoadDefault,
+  className 
+}: { 
+  onSave: () => void; 
+  onLoad: () => void; 
+  onLoadDefault: () => void;
+  className?: string 
+}) => {
+  return (
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 flex gap-2 ${className}`}>
+      <button
+        onClick={onSave}
+        className="px-4 py-2 bg-white hover:bg-gray-50 text-black border-2 border-black rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+        </svg>
+        Save Flow
+      </button>
+      <button
+        onClick={onLoad}
+        className="px-4 py-2 bg-white hover:bg-gray-50 text-black border-2 border-black rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L11 6.414V10h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2v-7a2 2 0 012-2h5V6.414L7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3z" />
+        </svg>
+        Load Flow
+      </button>
+      <button
+        onClick={onLoadDefault}
+        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white border-2 border-blue-600 rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+        Default Flow
+      </button>
+    </div>
+  );
+};
+
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const selectedElementsRef = useRef<{nodeIds: string[]; edgeIds: string[]}>({ nodeIds: [], edgeIds: [] });
   
-  // Edge configuration - update to use original line types
-  const [edgeType, setEdgeType] = useState<'bezier' | 'straight' | 'step' | 'smoothstep'>('bezier');
-  const [connectionLineType, setConnectionLineType] = useState<ConnectionLineType>(ConnectionLineType.Bezier);
-  const [edgeColor, setEdgeColor] = useState(edgeColors[0].value);
+  // Edge configuration - update to use step line types with rounded corners
+  const [edgeType, setEdgeType] = useState<'bezier' | 'straight' | 'step' | 'smoothstep'>('step');
+  const [connectionLineType, setConnectionLineType] = useState<ConnectionLineType>(ConnectionLineType.Step);
+  const [edgeColor, setEdgeColor] = useState('#757575'); // Grey color
   const [edgeAnimated, setEdgeAnimated] = useState(false);
-  const [showMarker, setShowMarker] = useState(true);
+  const [showMarker, setShowMarker] = useState(false); // No arrows
   
   // History management
   const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
@@ -117,6 +198,7 @@ function Flow() {
   const edgesJsonRef = useRef('');
   const isInitialRender = useRef(true);
   const pendingHistoryUpdate = useRef(false);
+  const isDraggingRef = useRef(false);
   
   // Initialize history with initial state
   useEffect(() => {
@@ -134,12 +216,49 @@ function Flow() {
       
       isInitialRender.current = false;
     }
+  }, [nodes, edges]);
+  
+  // Handle node drag start
+  const handleNodeDragStart = useCallback(() => {
+    isDraggingRef.current = true;
   }, []);
   
-  // Save current state to history when nodes or edges change
+  // Handle node drag stop - add to history when drag is complete
+  const handleNodeDragStop = useCallback(() => {
+    if (isDraggingRef.current) {
+      // Create a snapshot of the current state
+      const currentState = {
+        nodes: safeClone(nodes),
+        edges: safeClone(edges)
+      };
+      
+      // If we're not at the end of the history, truncate the future states
+      const newHistory = currentHistoryIndex < history.length - 1
+        ? [...history.slice(0, currentHistoryIndex + 1), currentState]
+        : [...history, currentState];
+      
+      // Limit history length
+      const limitedHistory = newHistory.length > MAX_HISTORY_LENGTH
+        ? newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH)
+        : newHistory;
+      
+      setHistory(limitedHistory);
+      setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
+      
+      // Update refs with current state
+      nodesJsonRef.current = JSON.stringify(nodes);
+      edgesJsonRef.current = JSON.stringify(edges);
+      
+      console.log('History updated after drag, length:', limitedHistory.length, 'current index:', Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
+      
+      isDraggingRef.current = false;
+    }
+  }, [nodes, edges, history, currentHistoryIndex]);
+  
+  // Save current state to history when edges change (but not nodes, which are handled by drag events)
   useEffect(() => {
     // Skip if this is the initial render or a history action
-    if (isInitialRender.current || isHistoryActionRef.current) {
+    if (isInitialRender.current || isHistoryActionRef.current || isDraggingRef.current) {
       isHistoryActionRef.current = false;
       return;
     }
@@ -151,22 +270,19 @@ function Flow() {
     
     pendingHistoryUpdate.current = true;
     
-    // Use setTimeout to defer the history update to the next tick
-    // This prevents the infinite loop by ensuring state updates don't cascade
-    setTimeout(() => {
+    // Use requestAnimationFrame instead of setTimeout for better timing
+    requestAnimationFrame(() => {
       try {
         // Stringify the current state to compare with previous state
-        const nodesJson = JSON.stringify(nodes);
         const edgesJson = JSON.stringify(edges);
         
-        // Only update history if something actually changed
-        if (nodesJson === nodesJsonRef.current && edgesJson === edgesJsonRef.current) {
+        // Only update history if edges actually changed
+        if (edgesJson === edgesJsonRef.current) {
           pendingHistoryUpdate.current = false;
           return;
         }
         
         // Update refs with current state
-        nodesJsonRef.current = nodesJson;
         edgesJsonRef.current = edgesJson;
         
         // Create a snapshot of the current state
@@ -186,17 +302,21 @@ function Flow() {
           : newHistory;
         
         setHistory(limitedHistory);
-        setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, MAX_HISTORY_LENGTH - 1));
+        setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
+        
+        console.log('History updated for edge change, length:', limitedHistory.length, 'current index:', Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
       } catch (error) {
         console.error('Error updating history:', error);
       } finally {
         pendingHistoryUpdate.current = false;
       }
-    }, 0);
-  }, [nodes, edges, history, currentHistoryIndex]);
+    });
+  }, [edges, nodes, history, currentHistoryIndex]);
   
   // Handle undo action
   const handleUndo = useCallback(() => {
+    console.log('Undo triggered, history length:', history.length, 'current index:', currentHistoryIndex);
+    
     if (currentHistoryIndex > 0 && history.length > 0) {
       try {
         isHistoryActionRef.current = true;
@@ -206,6 +326,8 @@ function Flow() {
           console.error('Previous state is undefined');
           return;
         }
+        
+        console.log('Applying previous state at index:', currentHistoryIndex - 1);
         
         // Create clean copies of the previous state
         const prevNodes = safeClone(prevState.nodes);
@@ -225,6 +347,7 @@ function Flow() {
         setTimeout(() => setToast(null), 3000);
       }
     } else {
+      console.log('Nothing to undo, at beginning of history');
       // Show toast notification for no more undo
       setToast({ message: 'Nothing to undo' });
       setTimeout(() => setToast(null), 3000);
@@ -315,25 +438,332 @@ function Flow() {
         ...params,
         type: edgeAnimated ? 'animated' : undefined, // Only use animated type if animated is true
         animated: edgeAnimated,
-        label: `${edgeType} edge`,
         markerEnd: showMarker ? {
           type: MarkerType.ArrowClosed,
           color: edgeColor,
         } : undefined,
+        style: { strokeWidth: 1.5, stroke: edgeColor },
+        pathOptions: { 
+          offset: 15, 
+          borderRadius: 8,
+          type: 'step' // Force step type for square edges with rounded corners
+        },
         data: {
           color: edgeColor,
-          strokeWidth: 2,
+          strokeWidth: 1.5,
+          type: 'step' // Store step as the edge type in the data
         },
       };
       
       setEdges((eds) => addEdge(newEdge, eds));
       
+      // Handle special connections between nodes
+      // Find source and target nodes
+      const sourceNode = nodes.find(node => node.id === params.source);
+      const targetNode = nodes.find(node => node.id === params.target);
+      
+      // If connecting from JSON Load to JSON Display
+      if (sourceNode?.type === 'jsonload' && targetNode?.type === 'jsondisplay') {
+        // Update the target node with the JSON data from the source node
+        if (sourceNode.data.jsonData) {
+          setNodes(nds => 
+            nds.map(node => {
+              if (node.id === targetNode.id) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    jsonData: sourceNode.data.jsonData
+                  }
+                };
+              }
+              return node;
+            })
+          );
+        }
+      }
+      
+      // If connecting to a Debug Display node, pass all source node data
+      if (targetNode?.type === 'debugdisplay' && sourceNode) {
+        setNodes(nds => 
+          nds.map(node => {
+            if (node.id === targetNode.id) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  sourceNodeId: sourceNode.id,
+                  sourceNodeType: sourceNode.type,
+                  sourceNodeData: { ...sourceNode.data }
+                }
+              };
+            }
+            return node;
+          })
+        );
+      }
+      
+      // If connecting from JSON Display to other nodes (e.g., Result)
+      if (sourceNode?.type === 'jsondisplay' && targetNode) {
+        // Check if the source node has an output value
+        if (sourceNode.data.outputValue !== undefined) {
+          // Log the output value for debugging
+          console.log('JSON Display output value:', sourceNode.data.outputValue, typeof sourceNode.data.outputValue);
+          
+          setNodes(nds => 
+            nds.map(node => {
+              if (node.id === targetNode.id) {
+                // Get the output value based on the output mode
+                let outputValue = sourceNode.data.outputValue;
+                
+                // Ensure we have a numeric value for calculation nodes
+                if (typeof outputValue === 'string' && 
+                    (targetNode.type === 'calculation' || targetNode.type === 'result')) {
+                  // Try to convert to number if it's a formatted string
+                  const parsed = parseFloat(outputValue);
+                  if (!isNaN(parsed)) {
+                    outputValue = parsed;
+                  }
+                }
+                
+                console.log('Processed output value for connection:', outputValue, typeof outputValue);
+                
+                // Handle different target node types
+                if (node.type === 'result') {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
+                    }
+                  };
+                } else if (node.type === 'calculation') {
+                  // For calculation nodes, determine which input to update based on the connection
+                  const isInput1 = params.targetHandle === 'input1';
+                  
+                  // Ensure the value is a number for calculation nodes
+                  let calcValue = outputValue;
+                  if (typeof calcValue === 'string') {
+                    const parsed = parseFloat(calcValue);
+                    if (!isNaN(parsed)) {
+                      calcValue = parsed;
+                    } else {
+                      calcValue = 0; // Default to 0 if we can't parse a number
+                    }
+                  }
+                  
+                  console.log(`Setting calculation ${isInput1 ? 'input1' : 'input2'} to:`, calcValue, typeof calcValue);
+                  
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      [isInput1 ? 'input1' : 'input2']: calcValue
+                    }
+                  };
+                } else {
+                  // Generic approach for other node types
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
+                    }
+                  };
+                }
+              }
+              return node;
+            })
+          );
+        }
+      }
+      
       // Show toast notification
       setToast({ message: 'Connection created' });
       setTimeout(() => setToast(null), 3000);
     },
-    [setEdges, edgeType, edgeColor, edgeAnimated, showMarker],
+    [setEdges, edgeColor, edgeAnimated, showMarker, nodes, setNodes],
   );
+  
+  // Update connections when node data changes
+  useEffect(() => {
+    // Find all connections between JSON Load and JSON Display nodes
+    const jsonLoadConnections = edges.filter(edge => {
+      const sourceNode = nodes.find(node => node.id === edge.source);
+      const targetNode = nodes.find(node => node.id === edge.target);
+      return sourceNode?.type === 'jsonload' && targetNode?.type === 'jsondisplay';
+    });
+    
+    // Update the target nodes with the JSON data from the source nodes
+    if (jsonLoadConnections.length > 0) {
+      setNodes(nds => {
+        let updated = false;
+        const newNodes = nds.map(node => {
+          // Check if this node is a target in any of the JSON connections
+          const connection = jsonLoadConnections.find(edge => edge.target === node.id);
+          if (connection) {
+            // Find the source node
+            const sourceNode = nodes.find(n => n.id === connection.source);
+            if (sourceNode?.data.jsonData && (!node.data.jsonData || JSON.stringify(node.data.jsonData) !== JSON.stringify(sourceNode.data.jsonData))) {
+              updated = true;
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  jsonData: sourceNode.data.jsonData
+                }
+              };
+            }
+          }
+          return node;
+        });
+        
+        return updated ? newNodes : nds;
+      });
+    }
+    
+    // Find all connections to Debug Display nodes
+    const debugDisplayConnections = edges.filter(edge => {
+      const targetNode = nodes.find(node => node.id === edge.target);
+      return targetNode?.type === 'debugdisplay';
+    });
+    
+    // Update the Debug Display nodes with the source node data
+    if (debugDisplayConnections.length > 0) {
+      setNodes(nds => {
+        let updated = false;
+        const newNodes = nds.map(node => {
+          // Check if this node is a Debug Display node that's a target in any connection
+          if (node.type === 'debugdisplay') {
+            const connection = debugDisplayConnections.find(edge => edge.target === node.id);
+            if (connection) {
+              // Find the source node
+              const sourceNode = nodes.find(n => n.id === connection.source);
+              if (sourceNode) {
+                // Only update if the source node data has changed
+                const sourceDataString = JSON.stringify(sourceNode.data);
+                const currentSourceDataString = node.data.sourceNodeData ? JSON.stringify(node.data.sourceNodeData) : '';
+                
+                if (sourceDataString !== currentSourceDataString) {
+                  updated = true;
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      sourceNodeId: sourceNode.id,
+                      sourceNodeType: sourceNode.type,
+                      sourceNodeData: { ...sourceNode.data }
+                    }
+                  };
+                }
+              }
+            }
+          }
+          return node;
+        });
+        
+        return updated ? newNodes : nds;
+      });
+    }
+    
+    // Find all connections from JSON Display nodes to other nodes
+    const jsonDisplayConnections = edges.filter(edge => {
+      const sourceNode = nodes.find(node => node.id === edge.source);
+      return sourceNode?.type === 'jsondisplay';
+    });
+    
+    // Update the target nodes with the output value from the JSON Display nodes
+    if (jsonDisplayConnections.length > 0) {
+      setNodes(nds => {
+        let updated = false;
+        const newNodes = nds.map(node => {
+          // Check if this node is a target in any of the JSON Display connections
+          const connection = jsonDisplayConnections.find(edge => edge.target === node.id);
+          if (connection) {
+            // Find the source node
+            const sourceNode = nodes.find(n => n.id === connection.source);
+            if (sourceNode?.data.outputValue !== undefined) {
+              // Get the output value based on the output mode
+              let outputValue = sourceNode.data.outputValue;
+              
+              // Ensure we have a numeric value for calculation nodes
+              if (typeof outputValue === 'string' && 
+                  (node.type === 'calculation' || node.type === 'result')) {
+                // Try to convert to number if it's a formatted string
+                const parsed = parseFloat(outputValue);
+                if (!isNaN(parsed)) {
+                  outputValue = parsed;
+                }
+              }
+              
+              // Only update if the value has changed
+              let shouldUpdate = false;
+              
+              // Handle different target node types
+              if (node.type === 'result') {
+                shouldUpdate = node.data.value !== outputValue;
+                if (shouldUpdate) {
+                  updated = true;
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
+                    }
+                  };
+                }
+              } else if (node.type === 'calculation') {
+                // For calculation nodes, determine which input to update based on the connection
+                const isInput1 = connection.targetHandle === 'input1';
+                
+                // Ensure the value is a number for calculation nodes
+                let calcValue = outputValue;
+                if (typeof calcValue === 'string') {
+                  const parsed = parseFloat(calcValue);
+                  if (!isNaN(parsed)) {
+                    calcValue = parsed;
+                  } else {
+                    calcValue = 0; // Default to 0 if we can't parse a number
+                  }
+                }
+                
+                const currentValue = isInput1 ? node.data.input1 : node.data.input2;
+                shouldUpdate = currentValue !== calcValue;
+                
+                if (shouldUpdate) {
+                  updated = true;
+                  console.log(`Updating calculation ${isInput1 ? 'input1' : 'input2'} to:`, calcValue, typeof calcValue);
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      [isInput1 ? 'input1' : 'input2']: calcValue
+                    }
+                  };
+                }
+              } else {
+                // Generic approach for other node types
+                shouldUpdate = node.data.value !== outputValue;
+                if (shouldUpdate) {
+                  updated = true;
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
+                    }
+                  };
+                }
+              }
+            }
+          }
+          return node;
+        });
+        
+        return updated ? newNodes : nds;
+      });
+    }
+  }, [nodes, edges, setNodes]);
   
   // Handle edge type change
   const handleEdgeTypeChange = useCallback((type: 'bezier' | 'straight' | 'step' | 'smoothstep') => {
@@ -362,6 +792,297 @@ function Flow() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // Add a Tailwind node to the canvas
+  const addTailwindNode = useCallback(() => {
+    const newNode: Node = {
+      id: `tailwind-${Date.now()}`,
+      type: 'tailwind',
+      position: { 
+        x: Math.random() * 500, 
+        y: Math.random() * 300 
+      },
+      data: { 
+        label: `Tailwind Node ${nodes.length + 1}`,
+        value: Math.floor(Math.random() * 1000)
+      },
+    };
+    
+    setNodes((nds) => [...nds, newNode]);
+    
+    // Show toast notification
+    setToast({ message: 'Added Tailwind node' });
+    setTimeout(() => setToast(null), 3000);
+  }, [nodes, setNodes]);
+
+  // Save flow to localStorage
+  const handleSaveFlow = useCallback(() => {
+    try {
+      const flow = {
+        nodes,
+        edges,
+        edgeType,
+        edgeColor,
+        edgeAnimated,
+        showMarker,
+      };
+      localStorage.setItem('savedFlow', JSON.stringify(flow));
+      setToast({ message: 'Flow saved successfully' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      console.error('Error saving flow:', error);
+      setToast({ message: 'Error saving flow' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [nodes, edges, edgeType, edgeColor, edgeAnimated, showMarker]);
+  
+  // Load flow from localStorage
+  const handleLoadFlow = useCallback(() => {
+    try {
+      const savedFlow = localStorage.getItem('savedFlow');
+      if (savedFlow) {
+        const flow = JSON.parse(savedFlow);
+        
+        // Set history action to prevent adding to history
+        isHistoryActionRef.current = true;
+        
+        // Update state with saved flow
+        setNodes(flow.nodes);
+        setEdges(flow.edges);
+        setEdgeType(flow.edgeType);
+        setEdgeColor(flow.edgeColor);
+        setEdgeAnimated(flow.edgeAnimated);
+        setShowMarker(flow.showMarker);
+        
+        // Update connection line type based on edge type
+        switch (flow.edgeType) {
+          case 'bezier':
+            setConnectionLineType(ConnectionLineType.Bezier);
+            break;
+          case 'straight':
+            setConnectionLineType(ConnectionLineType.Straight);
+            break;
+          case 'step':
+            setConnectionLineType(ConnectionLineType.Step);
+            break;
+          case 'smoothstep':
+            setConnectionLineType(ConnectionLineType.SmoothStep);
+            break;
+        }
+        
+        setToast({ message: 'Flow loaded successfully' });
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        setToast({ message: 'No saved flow found' });
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error loading flow:', error);
+      setToast({ message: 'Error loading flow' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [setNodes, setEdges]);
+  
+  // Save a default flow with JSON Load, JSON Display, Number Input, and Calculation nodes
+  const saveDefaultFlow = useCallback(() => {
+    try {
+      // Create a default flow with the nodes already set up
+      const defaultNodes: Node[] = [
+        {
+          id: 'jsonload-1',
+          type: 'jsonload',
+          position: { x: 100, y: 100 },
+          data: { 
+            label: 'JSON Load Node',
+            jsonData: null
+          }
+        },
+        {
+          id: 'jsondisplay-1',
+          type: 'jsondisplay',
+          position: { x: 100, y: 300 },
+          data: { 
+            label: 'JSON Display Node',
+            jsonData: null,
+            outputValue: null,
+            outputMode: 'raw' // Default to raw output mode
+          }
+        },
+        {
+          id: 'debugdisplay-1',
+          type: 'debugdisplay',
+          position: { x: 100, y: 500 },
+          data: { 
+            label: 'Debug Display Node',
+            description: 'Connect to any node to see its data'
+          }
+        },
+        {
+          id: 'numberinput-1',
+          type: 'numberinput',
+          position: { x: 400, y: 100 },
+          data: { 
+            label: 'Number Input',
+            value: 7
+          }
+        },
+        {
+          id: 'calculation-1',
+          type: 'calculation',
+          position: { x: 400, y: 300 },
+          data: { 
+            label: 'Calculation',
+            operation: 'multiplication',
+            input1: 0,
+            input2: 0,
+            result: 0
+          }
+        }
+      ];
+      
+      // Create edges connecting the nodes
+      const defaultEdges: Edge[] = [
+        {
+          id: 'edge-jsonload-jsondisplay',
+          source: 'jsonload-1',
+          target: 'jsondisplay-1',
+          type: undefined,
+          animated: false,
+          style: { strokeWidth: 1.5, stroke: edgeColor },
+          pathOptions: { 
+            offset: 15, 
+            borderRadius: 8,
+            type: 'step'
+          }
+        },
+        {
+          id: 'edge-jsondisplay-debugdisplay',
+          source: 'jsondisplay-1',
+          target: 'debugdisplay-1',
+          type: undefined,
+          animated: false,
+          style: { strokeWidth: 1.5, stroke: edgeColor },
+          pathOptions: { 
+            offset: 15, 
+            borderRadius: 8,
+            type: 'step'
+          }
+        },
+        {
+          id: 'edge-jsondisplay-calculation',
+          source: 'jsondisplay-1',
+          target: 'calculation-1',
+          targetHandle: 'input1',
+          type: undefined,
+          animated: false,
+          style: { strokeWidth: 1.5, stroke: edgeColor },
+          pathOptions: { 
+            offset: 15, 
+            borderRadius: 8,
+            type: 'step'
+          }
+        },
+        {
+          id: 'edge-numberinput-calculation',
+          source: 'numberinput-1',
+          target: 'calculation-1',
+          targetHandle: 'input2',
+          type: undefined,
+          animated: false,
+          style: { strokeWidth: 1.5, stroke: edgeColor },
+          pathOptions: { 
+            offset: 15, 
+            borderRadius: 8,
+            type: 'step'
+          }
+        }
+      ];
+      
+      const defaultFlow = {
+        nodes: defaultNodes,
+        edges: defaultEdges,
+        edgeType,
+        edgeColor,
+        edgeAnimated,
+        showMarker
+      };
+      
+      localStorage.setItem('defaultFlow', JSON.stringify(defaultFlow));
+      setToast({ message: 'Default flow saved successfully' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      console.error('Error saving default flow:', error);
+      setToast({ message: 'Error saving default flow' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [edgeType, edgeColor, edgeAnimated, showMarker]);
+  
+  useEffect(() => {
+    if (isInitialRender.current) {
+      // Always create a new default flow
+      saveDefaultFlow();
+      
+      // Then load it
+      const newDefaultFlow = localStorage.getItem('defaultFlow');
+      if (newDefaultFlow) {
+        const flow = JSON.parse(newDefaultFlow);
+        setNodes(flow.nodes);
+        setEdges(flow.edges);
+        setToast({ message: 'Default flow loaded' });
+        setTimeout(() => setToast(null), 3000);
+      }
+      
+      // Also check if there's a saved flow (but don't load it automatically)
+      const savedFlow = localStorage.getItem('savedFlow');
+      if (savedFlow) {
+        try {
+          // Don't automatically load, just show a toast that a saved flow exists
+          setToast({ message: 'Saved flow available. Click "Load Flow" to restore.' });
+          setTimeout(() => setToast(null), 5000);
+        } catch (error) {
+          console.error('Error checking saved flow:', error);
+        }
+      }
+    }
+  }, [setNodes, setEdges, saveDefaultFlow]);
+  
+  // Load the default flow
+  const loadDefaultFlow = useCallback(() => {
+    try {
+      const defaultFlow = localStorage.getItem('defaultFlow');
+      if (defaultFlow) {
+        const flow = JSON.parse(defaultFlow);
+        
+        // Set history action to prevent adding to history
+        isHistoryActionRef.current = true;
+        
+        // Update state with default flow
+        setNodes(flow.nodes);
+        setEdges(flow.edges);
+        
+        setToast({ message: 'Default flow loaded successfully' });
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        // If no default flow exists, create and save one
+        saveDefaultFlow();
+        
+        // Then load it
+        const newDefaultFlow = localStorage.getItem('defaultFlow');
+        if (newDefaultFlow) {
+          const flow = JSON.parse(newDefaultFlow);
+          setNodes(flow.nodes);
+          setEdges(flow.edges);
+        }
+        
+        setToast({ message: 'Created and loaded default flow' });
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error loading default flow:', error);
+      setToast({ message: 'Error loading default flow' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [setNodes, setEdges, saveDefaultFlow]);
+
   return (
     <div className="w-screen h-screen relative">
       <ReactFlow
@@ -370,81 +1091,29 @@ function Flow() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStop={handleNodeDragStop}
         deleteKeyCode="Delete"
         fitView
         attributionPosition="top-right"
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        connectionLineType={connectionLineType}
-        connectionLineStyle={{ stroke: edgeColor, strokeWidth: 2 }}
+        connectionLineType={ConnectionLineType.Step}
+        connectionLineStyle={{ stroke: edgeColor, strokeWidth: 1.5 }}
         className="bg-[#F7F9FB] dark:bg-[#1a1a1a]"
-        defaultEdgeOptions={{ type: edgeAnimated ? 'animated' : undefined }}
+        defaultEdgeOptions={{ 
+          type: edgeAnimated ? 'animated' : undefined,
+          style: { strokeWidth: 1.5, stroke: edgeColor },
+          pathOptions: { 
+            offset: 15, 
+            borderRadius: 8,
+            type: 'step' // Force step type for square edges with rounded corners
+          }
+        }}
       >
         <MiniMap zoomable pannable nodeClassName={nodeClassName} />
         <Controls />
         <Background />
-        
-        {/* Edge Type Selector Panel */}
-        <Panel position="bottom-center" className="bg-white dark:bg-gray-800 p-3 rounded-t-lg shadow-lg">
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Edge Type:</span>
-              <select 
-                value={edgeType}
-                onChange={(e) => handleEdgeTypeChange(e.target.value as any)}
-                className="p-1 border rounded bg-white dark:bg-gray-700 text-sm"
-              >
-                <option value="bezier">Bezier</option>
-                <option value="straight">Straight</option>
-                <option value="step">Step</option>
-                <option value="smoothstep">Smooth Step</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Color:</span>
-              <select 
-                value={edgeColor}
-                onChange={(e) => setEdgeColor(e.target.value)}
-                className="p-1 border rounded bg-white dark:bg-gray-700 text-sm"
-              >
-                {edgeColors.map((color) => (
-                  <option key={color.value} value={color.value} style={{ color: color.value }}>
-                    {color.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-sm ml-3">
-                <input 
-                  type="checkbox" 
-                  checked={showMarker}
-                  onChange={(e) => setShowMarker(e.target.checked)}
-                  className="rounded"
-                />
-                Show Arrow
-              </label>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-sm ml-3">
-                <input 
-                  type="checkbox" 
-                  checked={edgeAnimated}
-                  onChange={(e) => setEdgeAnimated(e.target.checked)}
-                  className="rounded"
-                />
-                Animated
-              </label>
-            </div>
-            
-            <div className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
-              Tip: Drag an edge end and drop it to delete the connection
-            </div>
-          </div>
-        </Panel>
         
         {/* Utility components for keyboard shortcuts and selection tracking */}
         <KeyboardShortcuts onShortcut={handleAction} />
@@ -453,8 +1122,14 @@ function Flow() {
       
       {/* UI Components */}
       <NodeSelector className="absolute top-4 left-4 z-10" />
-      <FlowToolbar className="absolute top-4 left-[280px] z-10" onAction={handleAction} />
+      <FlowToolbar className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10" onAction={handleAction} />
       <HelpPanel className="absolute top-4 right-4 z-10" />
+      <SavePanel 
+        className="absolute bottom-4 right-4 z-10" 
+        onSave={handleSaveFlow} 
+        onLoad={handleLoadFlow} 
+        onLoadDefault={loadDefaultFlow}
+      />
       
       {toast && (
         <Toast 

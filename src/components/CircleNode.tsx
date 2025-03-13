@@ -21,12 +21,17 @@ export default memo(({ id }: CircleNodeProps) => {
   });
 
   return (
-    <div className="rounded-full h-[100px] w-[100px] font-mono text-center">
-      <div>{label || 'no node connected'}</div>
+    <div className="rounded-full h-[100px] w-[100px] font-mono text-center bg-white border-2 border-black flex items-center justify-center shadow-md dark:bg-gray-800 dark:border-gray-600">
+      <div className="text-sm text-black dark:text-white">{label || 'no node connected'}</div>
       <Handle 
         type="target" 
         position={Position.Left} 
-        className="custom-handle bg-[var(--xy-handle-border-color-default)] rounded-sm w-2 h-1 border-none min-w-[2px] min-h-[2px]" 
+        className="!bg-black dark:!bg-gray-400 rounded-sm w-2 h-4 border-none min-w-[2px] min-h-[4px]" 
+      />
+      <Handle 
+        type="source" 
+        position={Position.Right} 
+        className="!bg-black dark:!bg-gray-400 rounded-sm w-2 h-4 border-none min-w-[2px] min-h-[4px]" 
       />
     </div>
   );
