@@ -9,6 +9,7 @@ interface CalculationNodeData {
   input1?: number;
   input2?: number;
   result?: number;
+  outputValue?: number;
 }
 
 const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, selected }) => {
@@ -204,7 +205,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ id, data, s
                 ...node.data,
                 input1: value1,
                 input2: value2,
-                result: calculatedResult
+                result: calculatedResult,
+                outputValue: calculatedResult
               }
             };
           }
