@@ -409,11 +409,8 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         ]
       }}
     >
-      {/* Title with Collapse Toggle */}
-      <div className="mb-3 flex justify-between items-center">
-        <div className="text-lg font-bold text-black dark:text-white">
-          {data.label || 'Parameter Formatter'}
-        </div>
+      {/* Collapse Toggle Button */}
+      <div className="mb-3 flex justify-end items-center">
         <button 
           onClick={toggleCollapse}
           className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded nodrag"
@@ -422,8 +419,38 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         </button>
       </div>
       
-      {/* Data Preview - Always show in collapsed mode */}
-      {jsonData && (
+      {/* Custom Label Input - Only show when expanded */}
+      {!isCollapsed && (
+        <div className="mb-3">
+          <input
+            type="text"
+            value={data.label || 'Parameter Formatter'}
+            onChange={(e) => {
+              if (id) {
+                setNodes(nds => 
+                  nds.map(node => {
+                    if (node.id === id) {
+                      return {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          label: e.target.value
+                        }
+                      };
+                    }
+                    return node;
+                  })
+                );
+              }
+            }}
+            className="w-full p-2 border rounded text-sm font-medium bg-white dark:bg-gray-700 nodrag"
+            placeholder="Node Label"
+          />
+        </div>
+      )}
+      
+      {/* Data Preview - Only show when expanded and data exists */}
+      {!isCollapsed && jsonData && (
         <div className="mb-3 p-2 bg-gray-100 dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Data:</span>

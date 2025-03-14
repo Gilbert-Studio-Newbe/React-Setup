@@ -111,20 +111,24 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
         };
         break;
       case 'jsonparameterformatter':
-        // JSON Parameter Formatter node with default configuration
+        // Prompt for a custom label
+        const formatterLabel = prompt('Enter a label for the Parameter Formatter node:', 'Parameter Formatter');
+        
+        // Use the provided label or default if canceled
+        const actualFormatterLabel = formatterLabel || 'Parameter Formatter';
+        
         data = {
-          label: 'Parameter Formatter',
+          label: actualFormatterLabel,
           jsonData: null,
           selectedParameters: [
-            { paramId: null, order: 0 },
-            { paramId: null, order: 1 },
-            { paramId: null, order: 2 },
-            { paramId: null, order: 3 },
-            { paramId: null, order: 4 }
+            { paramId: null, order: 0, customLabel: '' },
+            { paramId: null, order: 1, customLabel: '' },
+            { paramId: null, order: 2, customLabel: '' },
+            { paramId: null, order: 3, customLabel: '' },
+            { paramId: null, order: 4, customLabel: '' }
           ],
           dimensionParameter: null,
-          dimensionUnit: 'm',
-          formatTemplate: '**{name}**, {value};',
+          formatTemplate: '**{label}**, {value};',
           trimWhitespace: true,
           handleNullValues: 'skip',
           formattedString: '',
