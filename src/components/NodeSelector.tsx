@@ -22,6 +22,7 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'costinput', label: 'Cost Input Node' },
     { type: 'calculation', label: 'Calculation Node' },
     { type: 'join', label: 'Join Node' },
+    { type: 'csvimport', label: 'CSV Import Node' },
     { type: 'result', label: 'Result Node' },
     { type: 'ifcimport', label: 'IFC Import Node' },
     { type: 'jsonload', label: 'JSON Load Node' },
@@ -110,6 +111,17 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
           input2: '',
           separator: ' ',
           result: ''
+        };
+        break;
+      case 'csvimport':
+        // CSV Import node with default configuration
+        data = {
+          label: 'CSV Import',
+          fileName: '',
+          headers: [],
+          rowCount: 0,
+          previewRows: [],
+          isCollapsed: false
         };
         break;
       case 'result':

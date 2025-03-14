@@ -6,6 +6,7 @@
 - Added new CalculationNode with real-time calculation and improved UI
 - Created a reusable BaseNode component as a foundation for new node types
 - Added JoinNode for string concatenation with customizable separator
+- Implemented CSVImportNode with drag-and-drop file import, preview, and collapsible UI
 
 ## Identified Issues
 1. **Debug Display Node**: Currently only shows one input when multiple connections are made to it
@@ -15,6 +16,7 @@
 2. Continue testing with different node combinations
 3. Test CalculationNode with various input types and edge cases
 4. Test JoinNode with different input types and separators
+5. Test CSVImportNode with various CSV file formats and sizes
 
 ## Date
 Checkpoint created on: $(date) 
