@@ -20,13 +20,13 @@ interface JsonData {
 interface SelectedParameter {
   paramId: string | null;
   order: number;
+  customLabel?: string;
 }
 
 interface JsonParameterFormatterNodeData extends BaseNodeData {
   jsonData?: JsonData | null;
   selectedParameters?: SelectedParameter[];
   dimensionParameter?: string | null;
-  dimensionUnit?: string;
   formatTemplate?: string;
   trimWhitespace?: boolean;
   handleNullValues?: 'ignore' | 'skip';
@@ -38,28 +38,19 @@ const defaultData: JsonParameterFormatterNodeData = {
   label: 'Parameter Formatter',
   jsonData: null,
   selectedParameters: [
-    { paramId: null, order: 0 },
-    { paramId: null, order: 1 },
-    { paramId: null, order: 2 },
-    { paramId: null, order: 3 },
-    { paramId: null, order: 4 }
+    { paramId: null, order: 0, customLabel: '' },
+    { paramId: null, order: 1, customLabel: '' },
+    { paramId: null, order: 2, customLabel: '' },
+    { paramId: null, order: 3, customLabel: '' },
+    { paramId: null, order: 4, customLabel: '' }
   ],
   dimensionParameter: null,
-  dimensionUnit: 'm',
-  formatTemplate: '**{name}**, {value};',
+  formatTemplate: '**{label}**, {value};',
   trimWhitespace: true,
   handleNullValues: 'skip',
   formattedString: '',
   dimensionValue: null
 };
-
-const dimensionUnits = [
-  { value: 'm', label: 'meters (m)' },
-  { value: 'mm', label: 'millimeters (mm)' },
-  { value: 'cm', label: 'centimeters (cm)' },
-  { value: 'm²', label: 'square meters (m²)' },
-  { value: 'm³', label: 'cubic meters (m³)' }
-];
 
 const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeData>> = ({ 
   data = defaultData, 
@@ -76,11 +67,8 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
   const [dimensionParameter, setDimensionParameter] = useState<string | null>(
     data.dimensionParameter || null
   );
-  const [dimensionUnit, setDimensionUnit] = useState<string>(
-    data.dimensionUnit || 'm'
-  );
   const [formatTemplate, setFormatTemplate] = useState<string>(
-    data.formatTemplate || '**{name}**, {value};'
+    data.formatTemplate || '**{label}**, {value};'
   );
   const [trimWhitespace, setTrimWhitespace] = useState<boolean>(
     data.trimWhitespace !== undefined ? data.trimWhitespace : true
@@ -158,13 +146,14 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
       .sort((a, b) => a.order - b.order)
       .map(sp => {
         const param = getParameterById(sp.paramId);
-        return param;
+        return { param, customLabel: sp.customLabel };
       })
-      .filter(param => param !== null);
+      .filter(item => item.param !== null);
     
     if (validParameters.length === 0) return '';
     
-    const formattedParts = validParameters.map(param => {
+    const formattedParts = validParameters.map(item => {
+      const { param, customLabel } = item;
       if (!param) return '';
       
       // Skip null values if configured to do so
@@ -172,12 +161,13 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         return '';
       }
       
-      // Use description as the primary name if available, otherwise use the parameter name
-      const displayName = param.description || param.name;
+      // Use custom label if provided, otherwise use description or name
+      const displayName = customLabel || param.description || param.name;
       
       // Format the parameter according to the template
       let formatted = formatTemplate
-        .replace('{name}', displayName)
+        .replace('{label}', displayName)
+        .replace('{name}', param.description || param.name)
         .replace('{value}', String(param.value || ''));
       
       // Trim whitespace if configured
@@ -212,8 +202,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
       return null;
     }
     
-    // Convert based on unit if needed
-    // For now, we'll just return the raw value
     return value;
   }, [dimensionParameter, parameters, getParameterById]);
   
@@ -237,13 +225,13 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                   ...node.data,
                   selectedParameters,
                   dimensionParameter,
-                  dimensionUnit,
                   formatTemplate,
                   trimWhitespace,
                   handleNullValues,
                   formattedString: newFormattedString,
                   dimensionValue: newDimensionValue,
-                  outputValue: newFormattedString // Primary output is the formatted string
+                  outputValue: newFormattedString, // Primary output is the formatted string
+                  dimensionOutputValue: newDimensionValue // Add dimension value as a separate output
                 }
               };
             }
@@ -258,7 +246,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
     id, 
     selectedParameters, 
     dimensionParameter, 
-    dimensionUnit, 
     formatTemplate, 
     trimWhitespace, 
     handleNullValues, 
@@ -286,6 +273,15 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
     setFilterTerms(prev => {
       const updated = [...prev];
       updated[index] = '';
+      return updated;
+    });
+  }, []);
+  
+  // Handle custom label change
+  const handleCustomLabelChange = useCallback((index: number, value: string) => {
+    setSelectedParameters(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], customLabel: value };
       return updated;
     });
   }, []);
@@ -364,6 +360,13 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
   const toggleDimensionDropdown = () => {
     setShowDimensionDropdown(prev => !prev);
   };
+  
+  // Get dimension parameter display name
+  const getDimensionDisplayName = useCallback(() => {
+    if (!dimensionParameter) return null;
+    const param = getParameterById(dimensionParameter);
+    return param ? (param.description || param.name) : null;
+  }, [dimensionParameter, getParameterById]);
   
   return (
     <BaseNode<JsonParameterFormatterNodeData>
@@ -444,7 +447,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dimension Value:</div>
         <div className="font-mono text-sm text-green-600 dark:text-green-400">
           {dimensionValue !== null 
-            ? `${dimensionValue} ${dimensionUnit}` 
+            ? `${dimensionValue} ${getDimensionDisplayName() ? `(${getDimensionDisplayName()})` : ''}` 
             : 'No dimension selected'}
         </div>
       </div>
@@ -457,7 +460,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Parameter Selection:</div>
             
             {selectedParameters.map((selected, index) => (
-              <div key={`param-${index}`} className="mb-2 relative">
+              <div key={`param-${index}`} className="mb-4 relative">
                 <div className="flex items-center gap-2">
                   {/* Parameter Selector */}
                   <div 
@@ -549,6 +552,19 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                     </button>
                   </div>
                 </div>
+                
+                {/* Custom Label Input */}
+                {selected.paramId && (
+                  <div className="mt-1">
+                    <input
+                      type="text"
+                      placeholder="Custom label (optional)"
+                      className="w-full p-2 border rounded text-sm bg-white dark:bg-gray-700 nodrag"
+                      value={selected.customLabel || ''}
+                      onChange={(e) => handleCustomLabelChange(index, e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -621,19 +637,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                   </div>
                 )}
               </div>
-              
-              {/* Unit Selector */}
-              <select
-                className="p-2 border rounded bg-white dark:bg-gray-700 nodrag"
-                value={dimensionUnit}
-                onChange={(e) => setDimensionUnit(e.target.value)}
-              >
-                {dimensionUnits.map((unit) => (
-                  <option key={unit.value} value={unit.value}>
-                    {unit.label}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
           
@@ -651,10 +654,10 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                 className="w-full p-2 border rounded bg-white dark:bg-gray-700 nodrag"
                 value={formatTemplate}
                 onChange={(e) => setFormatTemplate(e.target.value)}
-                placeholder="**{name}**, {value};"
+                placeholder="**{label}**, {value};"
               />
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Use {'{name}'} and {'{value}'} as placeholders
+                Use {'{label}'}, {'{name}'} and {'{value}'} as placeholders
               </div>
             </div>
             

@@ -635,6 +635,76 @@ function Flow() {
         }
       }
       
+      // If connecting from JSON Parameter Formatter to other nodes
+      if (sourceNode?.type === 'jsonparameterformatter' && targetNode) {
+        // Check which output handle was used (output or dimension)
+        const isMainOutput = params.sourceHandle === 'output' || !params.sourceHandle;
+        const isDimensionOutput = params.sourceHandle === 'dimension';
+        
+        // Get the appropriate output value
+        let outputValue = isMainOutput 
+          ? sourceNode.data.outputValue 
+          : sourceNode.data.dimensionOutputValue;
+        
+        console.log(`JSON Parameter Formatter ${isMainOutput ? 'main' : 'dimension'} output:`, outputValue);
+        
+        setNodes(nds => 
+          nds.map(node => {
+            if (node.id === targetNode.id) {
+              // Handle different target node types
+              if (node.type === 'result') {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    value: outputValue
+                  }
+                };
+              } else if (node.type === 'calculation') {
+                // For calculation nodes, determine which input to update based on the connection
+                const isInput1 = params.targetHandle === 'input1';
+                
+                // Ensure the value is a number for calculation nodes
+                let calcValue = outputValue;
+                if (typeof calcValue === 'string') {
+                  const parsed = parseFloat(calcValue);
+                  if (!isNaN(parsed)) {
+                    calcValue = parsed;
+                  } else {
+                    calcValue = 0; // Default to 0 if we can't parse a number
+                  }
+                } else if (calcValue === null || calcValue === undefined) {
+                  calcValue = 0;
+                }
+                
+                // Force to number type to ensure proper calculation
+                calcValue = Number(calcValue);
+                
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    [isInput1 ? 'input1' : 'input2']: calcValue,
+                    // Remove result to force recalculation
+                    result: undefined
+                  }
+                };
+              } else {
+                // Generic approach for other node types
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    value: outputValue
+                  }
+                };
+              }
+            }
+            return node;
+          })
+        );
+      }
+      
       // Show toast notification
       setToast({ message: 'Connection created' });
       setTimeout(() => setToast(null), 3000);
@@ -691,29 +761,89 @@ function Flow() {
       return targetNode?.type === 'jsonparameterformatter';
     });
     
-    // Update the JSON Parameter Formatter nodes with the source node data
-    if (jsonParameterFormatterConnections.length > 0) {
+    // Find all connections from JSON Parameter Formatter nodes
+    const jsonParameterFormatterOutputConnections = edges.filter(edge => {
+      const sourceNode = nodes.find(node => node.id === edge.source);
+      return sourceNode?.type === 'jsonparameterformatter';
+    });
+    
+    // Update nodes connected to JSON Parameter Formatter outputs
+    if (jsonParameterFormatterOutputConnections.length > 0) {
       setNodes(nds => {
         let updated = false;
         const newNodes = nds.map(node => {
-          // Check if this node is a JSON Parameter Formatter node that's a target in any connection
-          if (node.type === 'jsonparameterformatter') {
-            const connection = jsonParameterFormatterConnections.find(edge => edge.target === node.id);
-            if (connection) {
-              // Find the source node
-              const sourceNode = nodes.find(n => n.id === connection.source);
-              if (sourceNode?.data.jsonData) {
-                // Only update if the JSON data has changed
-                const jsonDataString = JSON.stringify(sourceNode.data.jsonData);
-                const currentJsonDataString = node.data.jsonData ? JSON.stringify(node.data.jsonData) : '';
-                
-                if (jsonDataString !== currentJsonDataString) {
+          // Check if this node is a target in any of the JSON Parameter Formatter output connections
+          const connection = jsonParameterFormatterOutputConnections.find(edge => edge.target === node.id);
+          if (connection) {
+            // Find the source node
+            const sourceNode = nodes.find(n => n.id === connection.source);
+            if (sourceNode) {
+              // Check which output handle was used (output or dimension)
+              const isMainOutput = connection.sourceHandle === 'output' || !connection.sourceHandle;
+              const isDimensionOutput = connection.sourceHandle === 'dimension';
+              
+              // Get the appropriate output value
+              let outputValue = isMainOutput 
+                ? sourceNode.data.outputValue 
+                : sourceNode.data.dimensionOutputValue;
+              
+              // Only update if the value has changed
+              let shouldUpdate = false;
+              
+              // Handle different target node types
+              if (node.type === 'result') {
+                shouldUpdate = node.data.value !== outputValue;
+                if (shouldUpdate) {
                   updated = true;
                   return {
                     ...node,
                     data: {
                       ...node.data,
-                      jsonData: sourceNode.data.jsonData
+                      value: outputValue
+                    }
+                  };
+                }
+              } else if (node.type === 'calculation') {
+                // For calculation nodes, determine which input to update based on the connection
+                const isInput1 = connection.targetHandle === 'input1';
+                
+                // Ensure the value is a number for calculation nodes
+                let calcValue = outputValue;
+                if (typeof calcValue === 'string') {
+                  const parsed = parseFloat(calcValue);
+                  if (!isNaN(parsed)) {
+                    calcValue = parsed;
+                  } else {
+                    calcValue = 0; // Default to 0 if we can't parse a number
+                  }
+                } else if (calcValue === null || calcValue === undefined) {
+                  calcValue = 0;
+                }
+                
+                // Force to number type to ensure proper calculation
+                calcValue = Number(calcValue);
+                
+                // Create a new data object with the updated input and force recalculation
+                updated = true;
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    [isInput1 ? 'input1' : 'input2']: calcValue,
+                    // Remove result to force recalculation
+                    result: undefined
+                  }
+                };
+              } else {
+                // Generic approach for other node types
+                shouldUpdate = node.data.value !== outputValue;
+                if (shouldUpdate) {
+                  updated = true;
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
                     }
                   };
                 }
