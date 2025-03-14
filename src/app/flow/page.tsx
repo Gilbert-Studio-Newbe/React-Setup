@@ -47,6 +47,7 @@ import DebugDisplayNode from '@/components/DebugDisplayNode';
 import JoinNode from '@/components/JoinNode';
 import CSVImportNode from '@/components/CSVImportNode';
 import MaterialCostNode from '@/components/MaterialCostNode';
+import JsonParameterFormatterNode from '@/components/JsonParameterFormatterNode';
 
 // Only keep the edge types we need
 const edgeTypes = {
@@ -68,7 +69,8 @@ const nodeTypes = {
   debugdisplay: DebugDisplayNode,
   join: JoinNode,
   csvimport: CSVImportNode,
-  materialcost: MaterialCostNode
+  materialcost: MaterialCostNode,
+  jsonparameterformatter: JsonParameterFormatterNode
 } as any; // Using 'any' to bypass type checking for nodeTypes
 
 const nodeClassName = (node: any) => node.type;
@@ -495,6 +497,27 @@ function Flow() {
         );
       }
       
+      // If connecting to a JSON Parameter Formatter node, pass JSON data
+      if (targetNode?.type === 'jsonparameterformatter' && sourceNode) {
+        // Check if the source node has JSON data
+        if (sourceNode.data.jsonData) {
+          setNodes(nds => 
+            nds.map(node => {
+              if (node.id === targetNode.id) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    jsonData: sourceNode.data.jsonData
+                  }
+                };
+              }
+              return node;
+            })
+          );
+        }
+      }
+      
       // If connecting from Calculation to other nodes (e.g., Result)
       if (sourceNode?.type === 'calculation' && targetNode) {
         // Check if the source node has a result value
@@ -661,6 +684,48 @@ function Flow() {
       const targetNode = nodes.find(node => node.id === edge.target);
       return targetNode?.type === 'debugdisplay';
     });
+    
+    // Find all connections to JSON Parameter Formatter nodes
+    const jsonParameterFormatterConnections = edges.filter(edge => {
+      const targetNode = nodes.find(node => node.id === edge.target);
+      return targetNode?.type === 'jsonparameterformatter';
+    });
+    
+    // Update the JSON Parameter Formatter nodes with the source node data
+    if (jsonParameterFormatterConnections.length > 0) {
+      setNodes(nds => {
+        let updated = false;
+        const newNodes = nds.map(node => {
+          // Check if this node is a JSON Parameter Formatter node that's a target in any connection
+          if (node.type === 'jsonparameterformatter') {
+            const connection = jsonParameterFormatterConnections.find(edge => edge.target === node.id);
+            if (connection) {
+              // Find the source node
+              const sourceNode = nodes.find(n => n.id === connection.source);
+              if (sourceNode?.data.jsonData) {
+                // Only update if the JSON data has changed
+                const jsonDataString = JSON.stringify(sourceNode.data.jsonData);
+                const currentJsonDataString = node.data.jsonData ? JSON.stringify(node.data.jsonData) : '';
+                
+                if (jsonDataString !== currentJsonDataString) {
+                  updated = true;
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      jsonData: sourceNode.data.jsonData
+                    }
+                  };
+                }
+              }
+            }
+          }
+          return node;
+        });
+        
+        return updated ? newNodes : nds;
+      });
+    }
     
     // Update the Debug Display nodes with the source node data
     if (debugDisplayConnections.length > 0) {

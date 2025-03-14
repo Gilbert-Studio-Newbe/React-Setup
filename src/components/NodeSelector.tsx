@@ -24,6 +24,7 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'jsondisplay', label: 'JSON Display' },
     { type: 'debugdisplay', label: 'Debug Display' },
     { type: 'materialcost', label: 'Material Cost' },
+    { type: 'jsonparameterformatter', label: 'Parameter Formatter' },
   ];
 
   const addNode = (type: string) => {
@@ -107,6 +108,27 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
           matchingRecords: [],
           cost: null,
           error: ''
+        };
+        break;
+      case 'jsonparameterformatter':
+        // JSON Parameter Formatter node with default configuration
+        data = {
+          label: 'Parameter Formatter',
+          jsonData: null,
+          selectedParameters: [
+            { paramId: null, order: 0 },
+            { paramId: null, order: 1 },
+            { paramId: null, order: 2 },
+            { paramId: null, order: 3 },
+            { paramId: null, order: 4 }
+          ],
+          dimensionParameter: null,
+          dimensionUnit: 'm',
+          formatTemplate: '**{name}**, {value};',
+          trimWhitespace: true,
+          handleNullValues: 'skip',
+          formattedString: '',
+          dimensionValue: null
         };
         break;
       case 'result':
