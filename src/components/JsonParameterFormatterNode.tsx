@@ -172,9 +172,12 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         return '';
       }
       
+      // Use description as the primary name if available, otherwise use the parameter name
+      const displayName = param.description || param.name;
+      
       // Format the parameter according to the template
       let formatted = formatTemplate
-        .replace('{name}', param.name)
+        .replace('{name}', displayName)
         .replace('{value}', String(param.value || ''));
       
       // Trim whitespace if configured
