@@ -21,6 +21,7 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'numberinput', label: 'Number Input Node' },
     { type: 'costinput', label: 'Cost Input Node' },
     { type: 'calculation', label: 'Calculation Node' },
+    { type: 'join', label: 'Join Node' },
     { type: 'result', label: 'Result Node' },
     { type: 'ifcimport', label: 'IFC Import Node' },
     { type: 'jsonload', label: 'JSON Load Node' },
@@ -99,6 +100,16 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
           label: 'Calculation',
           operation: 'add',
           result: 0
+        };
+        break;
+      case 'join':
+        // Join node with default configuration
+        data = {
+          label: 'Join',
+          input1: '',
+          input2: '',
+          separator: ' ',
+          result: ''
         };
         break;
       case 'result':
