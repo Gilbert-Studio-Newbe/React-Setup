@@ -23,6 +23,7 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'jsonload', label: 'JSON Load' },
     { type: 'jsondisplay', label: 'JSON Display' },
     { type: 'debugdisplay', label: 'Debug Display' },
+    { type: 'materialcost', label: 'Material Cost' },
   ];
 
   const addNode = (type: string) => {
@@ -95,6 +96,17 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
           rowCount: 0,
           previewRows: [],
           isCollapsed: false
+        };
+        break;
+      case 'materialcost':
+        // Material Cost node with default configuration
+        data = {
+          label: 'Material Cost',
+          inputString: '',
+          csvData: [],
+          matchingRecords: [],
+          cost: null,
+          error: ''
         };
         break;
       case 'result':

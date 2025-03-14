@@ -46,6 +46,7 @@ import JsonDisplayNode from '@/components/JsonDisplayNode';
 import DebugDisplayNode from '@/components/DebugDisplayNode';
 import JoinNode from '@/components/JoinNode';
 import CSVImportNode from '@/components/CSVImportNode';
+import MaterialCostNode from '@/components/MaterialCostNode';
 
 // Only keep the edge types we need
 const edgeTypes = {
@@ -66,7 +67,8 @@ const nodeTypes = {
   jsondisplay: JsonDisplayNode,
   debugdisplay: DebugDisplayNode,
   join: JoinNode,
-  csvimport: CSVImportNode
+  csvimport: CSVImportNode,
+  materialcost: MaterialCostNode
 } as any; // Using 'any' to bypass type checking for nodeTypes
 
 const nodeClassName = (node: any) => node.type;
