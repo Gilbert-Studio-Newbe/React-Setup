@@ -13,11 +13,6 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
   const [toast, setToast] = useState<{ message: string } | null>(null);
 
   const nodeTypes = [
-    { type: 'input', label: 'Input Node' },
-    { type: 'default', label: 'Default Node' },
-    { type: 'output', label: 'Output Node' },
-    { type: 'circle', label: 'Circle Node' },
-    { type: 'textinput', label: 'Text Input Node' },
     { type: 'numberinput', label: 'Number Input Node' },
     { type: 'costinput', label: 'Cost Input Node' },
     { type: 'calculation', label: 'Calculation Node' },
@@ -28,9 +23,6 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     { type: 'jsonload', label: 'JSON Load Node' },
     { type: 'jsondisplay', label: 'JSON Display Node' },
     { type: 'debugdisplay', label: 'Debug Display Node' },
-    { type: 'tools', label: 'Toolbar Node' },
-    { type: 'resizer', label: 'Resizer Node' },
-    { type: 'annotation', label: 'Annotation Node' },
   ];
 
   const addNode = (type: string) => {
@@ -56,25 +48,6 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     
     // Configure specific node types
     switch (type) {
-      case 'annotation':
-        data = {
-          level: 1,
-          label: 'New Annotation',
-          arrowStyle: {
-            right: 0,
-            bottom: 0,
-            transform: 'translate(-30px,10px) rotate(-80deg)',
-          },
-        };
-        break;
-      case 'circle':
-        // Circle node doesn't need special data
-        data = {};
-        break;
-      case 'textinput':
-        // Text input node doesn't need special data
-        data = {};
-        break;
       case 'numberinput':
         // Number input node with default configuration
         data = {
@@ -169,16 +142,6 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
           value: null,
           description: 'Connect to any node to see its data'
         };
-        break;
-      case 'resizer':
-        // Add default size for resizer node
-        style = { width: 150, height: 100 };
-        nodeConfig.style = style;
-        break;
-      case 'tools':
-        // Add default size for toolbar node
-        style = { width: 100, height: 100 };
-        nodeConfig.style = style;
         break;
     }
     

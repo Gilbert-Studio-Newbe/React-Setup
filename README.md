@@ -4,6 +4,16 @@ This is a Next.js 14 application with App Router that demonstrates the use of Re
 
 ## Features
 
+- Drag and drop interface for creating and connecting nodes
+- Number Input Node: Allows numeric input with min/max constraints
+- Cost Input Node: Specialized input for cost values with currency
+- Calculation Node: Performs mathematical operations on inputs
+- Join Node: Concatenates text values with a customizable separator
+- CSV Import Node: Imports and parses CSV files with preview
+- JSON Load Node: Loads and parses JSON data
+- JSON Display Node: Displays and extracts values from JSON
+- Debug Display Node: Shows internal data of connected nodes
+- Result Node: Displays calculation results with formatting options
 - Interactive node-based diagrams using React Flow
 - Custom node types:
   - Circle Node: Displays position information
@@ -53,6 +63,19 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
   - `ResizerNode.tsx`: Resizer node component
   - `ButtonEdge.tsx`: Button edge component
   - `initial-elements.tsx`: Initial nodes and edges configuration
+
+## Component Structure
+
+- `NumberInputNode.tsx`: Number input node component
+- `CostInputNode.tsx`: Cost input node component
+- `CalculationNode.tsx`: Calculation node component
+- `JoinNode.tsx`: Join node for string concatenation
+- `CSVImportNode.tsx`: CSV import node component
+- `JsonLoadNode.tsx`: JSON load node component
+- `JsonDisplayNode.tsx`: JSON display node component
+- `DebugDisplayNode.tsx`: Debug display node component
+- `ResultNode.tsx`: Result node component
+- `BaseNode.tsx`: Base node component for creating new nodes
 
 ## Future Enhancements
 

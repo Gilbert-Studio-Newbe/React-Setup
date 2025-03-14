@@ -72,12 +72,11 @@ body {
 .react-flow__minimap .tools,
 .react-flow__minimap .circle,
 .react-flow__minimap .textinput {
-  fill: rgb(208, 192, 247);
+  display: none;
 }
 
 .react-flow__minimap .circle {
-  rx: 100%;
-  ry: 100%;
+  display: none;
 }
 
 .react-flow__minimap .annotation {
@@ -90,19 +89,9 @@ body {
 
 /* Node styles */
 .react-flow__node-annotation {
-  font-size: 16px;
-  width: 200px;
-  color: #683bfa;
-  position: absolute;
-  box-shadow: none;
-  font-family: monospace;
-  text-align: left;
-  background-color: transparent;
-  border: none;
+  display: none;
 }
 
 .react-flow__node-toolbar {
-  background-color: #000000;
-  border-radius: 16px;
-  overflow: hidden;
+  display: none;
 }

@@ -25,11 +25,6 @@ import {
   nodes as initialNodes,
   edges as initialEdges,
 } from '@/components/initial-elements';
-import AnnotationNode from '@/components/AnnotationNode';
-import ToolbarNode from '@/components/ToolbarNode';
-import ResizerNode from '@/components/ResizerNode';
-import CircleNode from '@/components/CircleNode';
-import TextInputNode from '@/components/TextInputNode';
 // Import only the edge types we'll actually use
 import ButtonEdge from '@/components/ButtonEdge';
 import AnimatedEdge from '@/components/AnimatedEdge';
@@ -61,11 +56,6 @@ const edgeTypes = {
 
 // Define nodeTypes with type assertion
 const nodeTypes = {
-  annotation: AnnotationNode,
-  tools: ToolbarNode,
-  resizer: ResizerNode,
-  circle: CircleNode,
-  textinput: TextInputNode,
   numberinput: NumberInputNode,
   costinput: CostInputNode,
   calculation: CalculationNode,
