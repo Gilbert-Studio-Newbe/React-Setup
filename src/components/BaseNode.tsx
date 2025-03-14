@@ -48,7 +48,7 @@ export const BaseNode = <T extends BaseNodeData>({
     `}>
       {/* Title */}
       <div className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">
-        {data?.label || 'Node'}
+        {data?.label || 'Base'}
       </div>
 
       {/* Content */}

@@ -36,8 +36,8 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
     // Create a unique ID
     const id = `${type}-${Date.now()}`;
     
-    // Create the node data based on type
-    let data: any = { label: `New ${type} Node` };
+    // Initialize with empty data - will be populated in the switch statement
+    let data: any = {};
     let style = {};
     let nodeConfig: any = {
       id,
@@ -144,6 +144,9 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
         };
         break;
     }
+    
+    // Update the nodeConfig with the populated data
+    nodeConfig.data = data;
     
     // Add the node to the flow
     addNodes(nodeConfig);

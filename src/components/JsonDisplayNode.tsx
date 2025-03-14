@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
 
 interface Parameter {
@@ -37,7 +37,10 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     outputMode: initialOutputMode = 'raw'
   } = data || {};
   
-  const { setNodes } = useReactFlow();
+  const reactFlowInstance = useReactFlow();
+  const { setNodes } = reactFlowInstance;
+  const getEdgesRef = useRef(reactFlowInstance.getEdges);
+  
   const [localJsonData, setLocalJsonData] = useState<JsonData | null>(null);
   const [filterTerm, setFilterTerm] = useState<string>('');
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
@@ -144,6 +147,50 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       setLocalJsonData(jsonData);
     }
   }, [jsonData]);
+  
+  // Update getEdgesRef when reactFlowInstance changes
+  useEffect(() => {
+    getEdgesRef.current = reactFlowInstance.getEdges;
+  }, [reactFlowInstance]);
+  
+  // Handle disconnections and reset data when needed
+  useEffect(() => {
+    if (!id) return;
+    
+    // Get the current edges using the ref
+    const currentEdges = getEdgesRef.current();
+    console.log('Checking connections for JsonDisplayNode:', id, 'Edges:', currentEdges.length);
+    
+    // Check if there are any edges connected to this node
+    const hasIncomingConnections = currentEdges.some(edge => edge.target === id);
+    
+    // If no connections and we have data, reset it
+    if (!hasIncomingConnections && localJsonData) {
+      console.log('No incoming connections, resetting JSON Display node data');
+      setLocalJsonData(null);
+      setSelectedParamId(null);
+      setOutputValue(0);
+      setFilterTerm('');
+      setEditedValues({});
+      
+      // Update the node data
+      setNodes(nds => 
+        nds.map(node => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                jsonData: null,
+                outputValue: 0
+              }
+            };
+          }
+          return node;
+        })
+      );
+    }
+  }, [id, localJsonData, setNodes]);
   
   // Update selected parameter when it changes from props
   useEffect(() => {
@@ -637,7 +684,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
               </div>
               
               {/* Parameter List */}
-              <div className="mb-3 max-h-[150px] overflow-y-auto border rounded">
+              <div className="mb-3 max-h-[150px] overflow-y-auto border rounded nodrag hover:overflow-scroll">
                 {filteredParameters.map((param) => (
                   <div 
                     key={param.id}
