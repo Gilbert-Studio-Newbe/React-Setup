@@ -13,16 +13,16 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
   const [toast, setToast] = useState<{ message: string } | null>(null);
 
   const nodeTypes = [
-    { type: 'numberinput', label: 'Number Input Node' },
-    { type: 'costinput', label: 'Cost Input Node' },
-    { type: 'calculation', label: 'Calculation Node' },
-    { type: 'join', label: 'Join Node' },
-    { type: 'csvimport', label: 'CSV Import Node' },
-    { type: 'result', label: 'Result Node' },
-    { type: 'ifcimport', label: 'IFC Import Node' },
-    { type: 'jsonload', label: 'JSON Load Node' },
-    { type: 'jsondisplay', label: 'JSON Display Node' },
-    { type: 'debugdisplay', label: 'Debug Display Node' },
+    { type: 'numberinput', label: 'Number Input' },
+    { type: 'costinput', label: 'Cost Input' },
+    { type: 'calculation', label: 'Calculation' },
+    { type: 'join', label: 'Join String' },
+    { type: 'csvimport', label: 'CSV Import' },
+    { type: 'result', label: 'Result' },
+    { type: 'ifcimport', label: 'IFC Import' },
+    { type: 'jsonload', label: 'JSON Load' },
+    { type: 'jsondisplay', label: 'JSON Display' },
+    { type: 'debugdisplay', label: 'Debug Display' },
   ];
 
   const addNode = (type: string) => {
@@ -79,7 +79,7 @@ const NodeSelector: React.FC<NodeSelectorProps> = ({ className }) => {
       case 'join':
         // Join node with default configuration
         data = {
-          label: 'Join',
+          label: 'Join String',
           input1: '',
           input2: '',
           separator: ' ',

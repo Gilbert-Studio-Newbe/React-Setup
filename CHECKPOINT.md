@@ -39,15 +39,15 @@ Checkpoint created on: $(date)
 - Updated README.md to reflect current node components
 
 ### Current Node Components
-- NumberInputNode: Allows numeric input with min/max constraints
-- CostInputNode: Specialized input for cost values with currency
-- CalculationNode: Performs mathematical operations on inputs
-- JoinNode: Concatenates text values with a customizable separator
-- CSVImportNode: Imports and parses CSV files with preview
-- JsonLoadNode: Loads and parses JSON data
-- JsonDisplayNode: Displays and extracts values from JSON
-- DebugDisplayNode: Shows internal data of connected nodes
-- ResultNode: Displays calculation results with formatting options
+- NumberInput: Allows numeric input with min/max constraints
+- CostInput: Specialized input for cost values with currency
+- Calculation: Performs mathematical operations on inputs
+- JoinString: Concatenates text values with a customizable separator
+- CSVImport: Imports and parses CSV files with preview
+- JsonLoad: Loads and parses JSON data
+- JsonDisplay: Displays and extracts values from JSON
+- DebugDisplay: Shows internal data of connected nodes
+- Result: Displays calculation results with formatting options
 - BaseNode: Base node component for creating new nodes
 
 ### Next Steps
