@@ -470,7 +470,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                     >
                       <span className="truncate">
                         {selected.paramId 
-                          ? getParameterById(selected.paramId)?.name || 'Select parameter' 
+                          ? getParameterById(selected.paramId)?.description || getParameterById(selected.paramId)?.name || 'Select parameter' 
                           : 'Select parameter'}
                       </span>
                       <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -569,7 +569,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                 >
                   <span className="truncate">
                     {dimensionParameter 
-                      ? getParameterById(dimensionParameter)?.name || 'Select dimension' 
+                      ? getParameterById(dimensionParameter)?.description || getParameterById(dimensionParameter)?.name || 'Select dimension' 
                       : 'Select dimension'}
                   </span>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
