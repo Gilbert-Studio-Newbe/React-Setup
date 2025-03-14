@@ -10,6 +10,9 @@
   --xy-edge-node-color-default: #555;
   --xy-theme-hover: #683bfa;
   --xy-theme-edge-hover: #683bfa;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 @theme inline {
