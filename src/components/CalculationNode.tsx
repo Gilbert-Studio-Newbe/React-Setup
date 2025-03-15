@@ -81,10 +81,16 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
     setNodes(nds => 
       nds.map(node => {
         if (node.id === id) {
+          // Store both the numeric result and the formatted result
+          const formattedOutput = hasDollarSign ? `$${roundedResult.toFixed(2)}` : roundedResult;
+          
           const newData: CalculationNodeData = {
             ...node.data,
             result: roundedResult,
-            outputValue: hasDollarSign ? `$${roundedResult.toFixed(2)}` : roundedResult,
+            // Always use the formatted result as the outputValue to ensure consistency
+            outputValue: formattedOutput,
+            // Add a numeric output value for nodes that need a number
+            numericOutputValue: roundedResult,
             input1,
             input2,
             operation,
@@ -249,6 +255,17 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   const displayResult = typeof result === 'number' 
     ? (hasDollarSign ? `$${result.toFixed(2)}` : result.toLocaleString()) 
     : result;
+
+  // Log the current output value for debugging
+  useEffect(() => {
+    console.log('Calculator node output:', {
+      id,
+      result,
+      displayResult,
+      hasDollarSign,
+      outputValue: hasDollarSign ? `$${(typeof result === 'number' ? result : 0).toFixed(2)}` : result
+    });
+  }, [id, result, displayResult, hasDollarSign]);
 
   return (
     <BaseNode<CalculationNodeData>
