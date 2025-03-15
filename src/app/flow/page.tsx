@@ -648,11 +648,73 @@ function Flow() {
         
         console.log(`JSON Parameter Formatter ${isMainOutput ? 'main' : 'dimension'} output:`, outputValue);
         
+        // Ensure the dimension output value is a valid number or null
+        if (isDimensionOutput && (outputValue === undefined || outputValue === null)) {
+          outputValue = 0;
+          console.log('Dimension output value was undefined or null, setting to 0');
+        }
+        
+        // Update the target node with the output value
         setNodes(nds => 
           nds.map(node => {
             if (node.id === targetNode.id) {
               // Handle different target node types
-              if (node.type === 'result') {
+              if (targetNode.type === 'calculator' || targetNode.type === 'calculation') {
+                // For calculator nodes, update the appropriate input
+                const isFirstInput = params.targetHandle === 'input-a' || params.targetHandle === 'input1';
+                const isSecondInput = params.targetHandle === 'input-b' || params.targetHandle === 'input2';
+                
+                // Ensure the value is a number for calculation nodes
+                let calcValue = outputValue;
+                if (typeof calcValue === 'string') {
+                  // Try to extract numeric part from string with improved regex
+                  const match = calcValue.match(/[-+]?[0-9]*\.?[0-9]+/);
+                  if (match) {
+                    calcValue = parseFloat(match[0]);
+                    console.log('Extracted numeric value from string:', calcValue, 'from', calcValue);
+                  } else {
+                    calcValue = 0; // Default to 0 if we can't parse a number
+                    console.log('Could not extract numeric value from string, defaulting to 0');
+                  }
+                } else if (calcValue === null || calcValue === undefined) {
+                  calcValue = 0;
+                  console.log('Output value was null or undefined, defaulting to 0');
+                } else if (typeof calcValue !== 'number') {
+                  calcValue = 0;
+                  console.log('Output value was not a number, defaulting to 0');
+                } else {
+                  console.log('Using numeric output value directly:', calcValue);
+                }
+                
+                // Force to number type and round to avoid floating point issues
+                calcValue = Number(parseFloat(calcValue.toString()).toFixed(4));
+                console.log(`Setting calculation ${isFirstInput ? 'input1' : 'input2'} to:`, calcValue);
+                
+                if (isFirstInput) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      input1: calcValue,
+                      valueA: calcValue,
+                      // Remove result to force recalculation
+                      result: undefined
+                    }
+                  };
+                } else if (isSecondInput) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      input2: calcValue,
+                      valueB: calcValue,
+                      // Remove result to force recalculation
+                      result: undefined
+                    }
+                  };
+                }
+              } else {
+                // Generic approach for other node types
                 return {
                   ...node,
                   data: {
@@ -660,37 +722,84 @@ function Flow() {
                     value: outputValue
                   }
                 };
-              } else if (node.type === 'calculation') {
-                // For calculation nodes, determine which input to update based on the connection
-                const isInput1 = params.targetHandle === 'input1';
+              }
+            }
+            return node;
+          })
+        );
+      }
+      
+      // If connecting from Material Cost node to other nodes
+      if (sourceNode?.type === 'materialcost' && targetNode) {
+        // Check if we should use the numeric value for calculations
+        let outputValue = sourceNode.data.outputValue;
+        let numericValue = sourceNode.data.numericOutputValue;
+        
+        console.log('Material Cost output:', outputValue, 'Numeric value:', numericValue);
+        
+        // Update the target node with the appropriate value
+        setNodes(nds => 
+          nds.map(node => {
+            if (node.id === targetNode.id) {
+              // Handle different target node types
+              if (targetNode.type === 'calculator' || targetNode.type === 'calculation') {
+                // For calculator nodes, use the numeric value
+                const isFirstInput = params.targetHandle === 'input-a' || params.targetHandle === 'input1';
+                const isSecondInput = params.targetHandle === 'input-b' || params.targetHandle === 'input2';
                 
-                // Ensure the value is a number for calculation nodes
-                let calcValue = outputValue;
-                if (typeof calcValue === 'string') {
-                  const parsed = parseFloat(calcValue);
-                  if (!isNaN(parsed)) {
-                    calcValue = parsed;
+                // Use the numeric value if available, otherwise try to extract it
+                let calcValue = numericValue;
+                if (calcValue === null || calcValue === undefined) {
+                  if (typeof outputValue === 'string') {
+                    // Try to extract numeric part from string with improved regex
+                    const match = outputValue.match(/[-+]?[0-9]*\.?[0-9]+/);
+                    if (match) {
+                      calcValue = parseFloat(match[0]);
+                      console.log('Extracted numeric value from string:', calcValue, 'from', outputValue);
+                    } else {
+                      calcValue = 0;
+                      console.log('Could not extract numeric value from string, defaulting to 0');
+                    }
+                  } else if (typeof outputValue === 'number') {
+                    calcValue = outputValue;
+                    console.log('Using numeric output value directly:', calcValue);
                   } else {
-                    calcValue = 0; // Default to 0 if we can't parse a number
+                    calcValue = 0;
+                    console.log('No valid output value found, defaulting to 0');
                   }
-                } else if (calcValue === null || calcValue === undefined) {
-                  calcValue = 0;
+                } else {
+                  console.log('Using numeric output value:', calcValue);
                 }
                 
-                // Force to number type to ensure proper calculation
-                calcValue = Number(calcValue);
+                // Force to number type and round to avoid floating point issues
+                calcValue = Number(parseFloat(calcValue.toString()).toFixed(4));
+                console.log(`Setting calculation ${isFirstInput ? 'input1' : 'input2'} to:`, calcValue);
                 
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    [isInput1 ? 'input1' : 'input2']: calcValue,
-                    // Remove result to force recalculation
-                    result: undefined
-                  }
-                };
+                if (isFirstInput) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      input1: calcValue,
+                      valueA: calcValue,
+                      // Remove result to force recalculation
+                      result: undefined
+                    }
+                  };
+                } else if (isSecondInput) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      input2: calcValue,
+                      valueB: calcValue,
+                      // Remove result to force recalculation
+                      result: undefined
+                    }
+                  };
+                }
               } else {
-                // Generic approach for other node types
+                // For other node types, use the formatted value
                 return {
                   ...node,
                   data: {
@@ -1316,7 +1425,7 @@ function Flow() {
         setNodes(flow.nodes);
         setEdges(flow.edges);
         setToast({ message: 'Default flow loaded' });
-        setTimeout(() => setToast(null), 3000);
+        setTimeout(() => setToast(null), 5000);
       }
       
       // Also check if there's a saved flow (but don't load it automatically)

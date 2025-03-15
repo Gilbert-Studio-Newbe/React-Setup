@@ -9,6 +9,7 @@ interface CalculationNodeData extends BaseNodeData {
   input2?: number;
   operation?: 'add' | 'subtract' | 'multiply' | 'divide';
   result?: number;
+  hasDollarSign?: boolean;
 }
 
 const defaultData: CalculationNodeData = {
@@ -17,7 +18,8 @@ const defaultData: CalculationNodeData = {
   input2: 0,
   operation: 'add',
   result: 0,
-  outputValue: 0
+  outputValue: 0,
+  hasDollarSign: false
 };
 
 const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defaultData, isConnectable, id }) => {
@@ -33,6 +35,10 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   );
   const [result, setResult] = useState<number | string>(data.result ?? 0);
   const [error, setError] = useState<string>('');
+  const [hasDollarSign, setHasDollarSign] = useState<boolean>(data.hasDollarSign ?? false);
+  
+  // Track if we're currently processing an update to prevent loops
+  const processingUpdate = React.useRef(false);
 
   // Calculate result based on inputs and operation
   const calculateResult = useCallback(() => {
@@ -63,7 +69,13 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
 
     // Round to 4 decimal places to avoid floating point issues
     const roundedResult = Math.round(calculatedResult * 10000) / 10000;
-    setResult(roundedResult);
+    
+    // Format the result with dollar sign if needed
+    const formattedResult = hasDollarSign 
+      ? `$${roundedResult.toFixed(2)}` 
+      : roundedResult;
+    
+    setResult(formattedResult);
 
     // Update node data with new result
     setNodes(nds => 
@@ -72,10 +84,11 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
           const newData: CalculationNodeData = {
             ...node.data,
             result: roundedResult,
-            outputValue: roundedResult,
+            outputValue: hasDollarSign ? `$${roundedResult.toFixed(2)}` : roundedResult,
             input1,
             input2,
-            operation
+            operation,
+            hasDollarSign
           };
           return {
             ...node,
@@ -85,61 +98,144 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
         return node;
       })
     );
-  }, [input1, input2, operation, id, setNodes]);
+  }, [input1, input2, operation, id, setNodes, hasDollarSign]);
 
   // Handle incoming connections and updates
   useEffect(() => {
-    if (!id) return;
+    if (!id || processingUpdate.current) return;
+    
+    processingUpdate.current = true;
+    
+    try {
+      // Find all edges that connect to this node
+      const incomingEdges = edges.filter(edge => edge.target === id);
 
-    // Find all edges that connect to this node
-    const incomingEdges = edges.filter(edge => edge.target === id);
+      // Reset inputs that have no connected edges
+      const hasInput1Connection = incomingEdges.some(edge => edge.targetHandle === 'input1');
+      const hasInput2Connection = incomingEdges.some(edge => edge.targetHandle === 'input2');
 
-    // Reset inputs that have no connected edges
-    const hasInput1Connection = incomingEdges.some(edge => edge.targetHandle === 'input1');
-    const hasInput2Connection = incomingEdges.some(edge => edge.targetHandle === 'input2');
+      // Track if we need to update state
+      let newInput1 = input1;
+      let newInput2 = input2;
+      let input1Changed = false;
+      let input2Changed = false;
+      let newHasDollarSign = hasDollarSign;
 
-    if (!hasInput1Connection) {
-      setInput1(0);
-    }
-    if (!hasInput2Connection) {
-      setInput2(0);
-    }
-
-    // Process each incoming connection
-    incomingEdges.forEach(edge => {
-      const sourceNode = nodes.find(node => node.id === edge.source);
-      if (!sourceNode?.data) return;
-
-      // Get the value from the source node with type checking
-      let value: number = 0;
-      const nodeData = sourceNode.data as Record<string, unknown>;
+      if (!hasInput1Connection && input1 !== 0) {
+        newInput1 = 0;
+        input1Changed = true;
+      }
       
-      if (typeof nodeData.value === 'number') {
-        value = nodeData.value;
-      } else if (typeof nodeData.outputValue === 'number') {
-        value = nodeData.outputValue;
-      } else if (typeof nodeData.result === 'number') {
-        value = nodeData.result;
-      } else if (typeof nodeData.value === 'string') {
-        const parsed = parseFloat(nodeData.value);
-        if (!isNaN(parsed)) {
-          value = parsed;
-        }
+      if (!hasInput2Connection && input2 !== 0) {
+        newInput2 = 0;
+        input2Changed = true;
       }
 
-      // Update the appropriate input based on the target handle
-      if (edge.targetHandle === 'input1' && value !== input1) {
-        setInput1(value);
-      } else if (edge.targetHandle === 'input2' && value !== input2) {
-        setInput2(value);
+      // Process each incoming connection
+      incomingEdges.forEach(edge => {
+        const sourceNode = nodes.find(node => node.id === edge.source);
+        if (!sourceNode?.data) return;
+
+        // Get the value from the source node with type checking
+        let value: number = 0;
+        let sourceHasDollarSign = false;
+        const nodeData = sourceNode.data as Record<string, unknown>;
+        
+        // Check if source has dollar sign in its output
+        if (typeof nodeData.outputValue === 'string' && nodeData.outputValue.includes('$')) {
+          sourceHasDollarSign = true;
+        }
+        
+        // First check for numeric output value (from MaterialCostNode)
+        if (typeof nodeData.numericOutputValue === 'number') {
+          value = nodeData.numericOutputValue;
+          console.log('Using numeric output value:', value);
+          
+          // If this is a material cost node, check if it has a dollar sign
+          if (sourceNode.type === 'materialcost') {
+            sourceHasDollarSign = true;
+          }
+        }
+        // Check for dimension output value (from JsonParameterFormatterNode)
+        else if (typeof nodeData.dimensionOutputValue === 'number') {
+          value = nodeData.dimensionOutputValue;
+          console.log('Using dimension output value:', value);
+        } 
+        else if (typeof nodeData.value === 'number') {
+          value = nodeData.value;
+        } 
+        else if (typeof nodeData.outputValue === 'number') {
+          value = nodeData.outputValue;
+        } 
+        else if (typeof nodeData.result === 'number') {
+          value = nodeData.result;
+        } 
+        else if (typeof nodeData.value === 'string' || typeof nodeData.outputValue === 'string') {
+          // Try to extract numeric part from string (e.g. "$4.09" -> 4.09)
+          const stringValue = (typeof nodeData.value === 'string') ? nodeData.value : String(nodeData.outputValue);
+          
+          // Check if the string has a dollar sign
+          if (stringValue.includes('$')) {
+            sourceHasDollarSign = true;
+          }
+          
+          const numericMatch = stringValue.match(/[-+]?[0-9]*\.?[0-9]+/);
+          if (numericMatch) {
+            const parsed = parseFloat(numericMatch[0]);
+            if (!isNaN(parsed)) {
+              value = parsed;
+              console.log('Extracted numeric value from string:', value, 'from', stringValue);
+            }
+          }
+        }
+
+        // Update the appropriate input based on the target handle
+        if (edge.targetHandle === 'input1') {
+          // Use small epsilon for floating point comparison
+          if (Math.abs(value - newInput1) > 0.0001) {
+            newInput1 = value;
+            input1Changed = true;
+            
+            // If this is the first input and it has a dollar sign, set the flag
+            if (sourceHasDollarSign) {
+              newHasDollarSign = true;
+            }
+          }
+        } else if (edge.targetHandle === 'input2') {
+          // Use small epsilon for floating point comparison
+          if (Math.abs(value - newInput2) > 0.0001) {
+            newInput2 = value;
+            input2Changed = true;
+            
+            // If this is the second input and it has a dollar sign, set the flag
+            if (sourceHasDollarSign) {
+              newHasDollarSign = true;
+            }
+          }
+        }
+      });
+
+      // Only update state if values have changed
+      if (input1Changed) {
+        setInput1(newInput1);
       }
-    });
-  }, [edges, nodes, id, input1, input2]);
+      if (input2Changed) {
+        setInput2(newInput2);
+      }
+      if (newHasDollarSign !== hasDollarSign) {
+        setHasDollarSign(newHasDollarSign);
+      }
+    } finally {
+      processingUpdate.current = false;
+    }
+  }, [edges, nodes, id, input1, input2, hasDollarSign]);
 
   // Recalculate when inputs or operation changes
   useEffect(() => {
-    calculateResult();
-  }, [input1, input2, operation, calculateResult]);
+    if (!processingUpdate.current) {
+      calculateResult();
+    }
+  }, [input1, input2, operation, hasDollarSign, calculateResult]);
 
   // Operation symbol mapping
   const operationSymbols = {
@@ -148,6 +244,11 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
     multiply: '×',
     divide: '÷'
   };
+
+  // Format the display result with dollar sign if needed
+  const displayResult = typeof result === 'number' 
+    ? (hasDollarSign ? `$${result.toFixed(2)}` : result.toLocaleString()) 
+    : result;
 
   return (
     <BaseNode<CalculationNodeData>
@@ -220,11 +321,15 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
       <div className="mb-4 space-y-2">
         <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
           <span className="text-sm text-gray-600 dark:text-gray-300">Input 1:</span>
-          <span className="font-mono text-gray-800 dark:text-gray-200">{input1}</span>
+          <span className="font-mono text-gray-800 dark:text-gray-200">
+            {hasDollarSign ? `$${input1.toFixed(2)}` : input1}
+          </span>
         </div>
         <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
           <span className="text-sm text-gray-600 dark:text-gray-300">Input 2:</span>
-          <span className="font-mono text-gray-800 dark:text-gray-200">{input2}</span>
+          <span className="font-mono text-gray-800 dark:text-gray-200">
+            {hasDollarSign ? `$${input2.toFixed(2)}` : input2}
+          </span>
         </div>
       </div>
 
@@ -245,7 +350,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
               font-mono font-bold text-lg
               ${error ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}
             `}>
-              {typeof result === 'number' ? result.toLocaleString() : result}
+              {displayResult}
             </span>
           </div>
         </div>

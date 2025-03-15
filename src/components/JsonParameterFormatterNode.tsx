@@ -21,35 +21,32 @@ interface SelectedParameter {
   paramId: string | null;
   order: number;
   customLabel?: string;
+  convertToMillimeters?: boolean;
 }
 
 interface JsonParameterFormatterNodeData extends BaseNodeData {
   jsonData?: JsonData | null;
   selectedParameters?: SelectedParameter[];
-  dimensionParameter?: string | null;
   formatTemplate?: string;
   trimWhitespace?: boolean;
   handleNullValues?: 'ignore' | 'skip';
   formattedString?: string;
-  dimensionValue?: number | null;
 }
 
 const defaultData: JsonParameterFormatterNodeData = {
   label: 'Parameter Formatter',
   jsonData: null,
   selectedParameters: [
-    { paramId: null, order: 0, customLabel: '' },
-    { paramId: null, order: 1, customLabel: '' },
-    { paramId: null, order: 2, customLabel: '' },
-    { paramId: null, order: 3, customLabel: '' },
-    { paramId: null, order: 4, customLabel: '' }
+    { paramId: null, order: 0, customLabel: '', convertToMillimeters: false },
+    { paramId: null, order: 1, customLabel: '', convertToMillimeters: false },
+    { paramId: null, order: 2, customLabel: '', convertToMillimeters: false },
+    { paramId: null, order: 3, customLabel: '', convertToMillimeters: false },
+    { paramId: null, order: 4, customLabel: '', convertToMillimeters: false }
   ],
-  dimensionParameter: null,
   formatTemplate: '**{label}**, {value};',
   trimWhitespace: true,
   handleNullValues: 'skip',
-  formattedString: '',
-  dimensionValue: null
+  formattedString: ''
 };
 
 const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeData>> = ({ 
@@ -64,9 +61,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
   const [selectedParameters, setSelectedParameters] = useState<SelectedParameter[]>(
     data.selectedParameters || defaultData.selectedParameters
   );
-  const [dimensionParameter, setDimensionParameter] = useState<string | null>(
-    data.dimensionParameter || null
-  );
   const [formatTemplate, setFormatTemplate] = useState<string>(
     data.formatTemplate || '**{label}**, {value};'
   );
@@ -79,18 +73,12 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
   const [formattedString, setFormattedString] = useState<string>(
     data.formattedString || ''
   );
-  const [dimensionValue, setDimensionValue] = useState<number | null>(
-    data.dimensionValue || null
-  );
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [filterTerms, setFilterTerms] = useState<string[]>(Array(5).fill(''));
-  const [dimensionFilterTerm, setDimensionFilterTerm] = useState<string>('');
   const [showDropdowns, setShowDropdowns] = useState<boolean[]>(Array(5).fill(false));
-  const [showDimensionDropdown, setShowDimensionDropdown] = useState<boolean>(false);
   
   // Refs for dropdown containers
   const dropdownRefs = useRef<(HTMLDivElement | null)[]>(Array(5).fill(null));
-  const dimensionDropdownRef = useRef<HTMLDivElement | null>(null);
   
   // Update jsonData when it changes from props
   useEffect(() => {
@@ -120,17 +108,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
     });
   }, [parameters, filterTerms]);
   
-  // Filter dimension parameters
-  const filteredDimensionParameters = useMemo(() => {
-    if (!dimensionFilterTerm) return parameters;
-    
-    const lowerTerm = dimensionFilterTerm.toLowerCase();
-    return parameters.filter(param => 
-      param.name.toLowerCase().includes(lowerTerm) || 
-      (param.description && param.description.toLowerCase().includes(lowerTerm))
-    );
-  }, [parameters, dimensionFilterTerm]);
-  
   // Get parameter by ID
   const getParameterById = useCallback((paramId: string | null) => {
     if (!paramId || !parameters.length) return null;
@@ -146,14 +123,14 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
       .sort((a, b) => a.order - b.order)
       .map(sp => {
         const param = getParameterById(sp.paramId);
-        return { param, customLabel: sp.customLabel };
+        return { param, customLabel: sp.customLabel, convertToMillimeters: sp.convertToMillimeters };
       })
       .filter(item => item.param !== null);
     
     if (validParameters.length === 0) return '';
     
     const formattedParts = validParameters.map(item => {
-      const { param, customLabel } = item;
+      const { param, customLabel, convertToMillimeters } = item;
       if (!param) return '';
       
       // Skip null values if configured to do so
@@ -164,11 +141,24 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
       // Use custom label if provided, otherwise use description or name
       const displayName = customLabel || param.description || param.name;
       
+      // Apply conversion if needed
+      let value = param.value;
+      if (convertToMillimeters && typeof value === 'number') {
+        value = value * 1000;
+      } else if (convertToMillimeters && typeof value === 'string') {
+        // Try to extract numeric part and convert
+        const match = value.match(/[\d.]+/);
+        if (match) {
+          const numValue = parseFloat(match[0]) * 1000;
+          value = value.replace(match[0], numValue.toString());
+        }
+      }
+      
       // Format the parameter according to the template
       let formatted = formatTemplate
         .replace('{label}', displayName)
         .replace('{name}', param.description || param.name)
-        .replace('{value}', String(param.value || ''));
+        .replace('{value}', String(value || ''));
       
       // Trim whitespace if configured
       if (trimWhitespace) {
@@ -181,38 +171,12 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
     return formattedParts.join(' ');
   }, [parameters, selectedParameters, getParameterById, formatTemplate, trimWhitespace, handleNullValues]);
   
-  // Calculate dimension value
-  const calculateDimensionValue = useCallback(() => {
-    if (!dimensionParameter || !parameters.length) return null;
-    
-    const param = getParameterById(dimensionParameter);
-    if (!param) return null;
-    
-    // Extract numeric value
-    let value = param.value;
-    if (typeof value === 'string') {
-      // Try to extract numeric part
-      const match = value.match(/[\d.]+/);
-      if (match) {
-        value = parseFloat(match[0]);
-      } else {
-        return null;
-      }
-    } else if (typeof value !== 'number') {
-      return null;
-    }
-    
-    return value;
-  }, [dimensionParameter, parameters, getParameterById]);
-  
-  // Update formatted string and dimension value when inputs change
+  // Update formatted string when inputs change
   useEffect(() => {
     try {
       const newFormattedString = generateFormattedString();
-      const newDimensionValue = calculateDimensionValue();
       
       setFormattedString(newFormattedString);
-      setDimensionValue(newDimensionValue);
       
       // Update node data
       if (id) {
@@ -224,14 +188,11 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                 data: {
                   ...node.data,
                   selectedParameters,
-                  dimensionParameter,
                   formatTemplate,
                   trimWhitespace,
                   handleNullValues,
                   formattedString: newFormattedString,
-                  dimensionValue: newDimensionValue,
-                  outputValue: newFormattedString, // Primary output is the formatted string
-                  dimensionOutputValue: newDimensionValue // Add dimension value as a separate output
+                  outputValue: newFormattedString // Primary output is the formatted string
                 }
               };
             }
@@ -245,12 +206,10 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
   }, [
     id, 
     selectedParameters, 
-    dimensionParameter, 
     formatTemplate, 
     trimWhitespace, 
-    handleNullValues, 
+    handleNullValues,
     generateFormattedString, 
-    calculateDimensionValue, 
     setNodes
   ]);
   
@@ -284,13 +243,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
       updated[index] = { ...updated[index], customLabel: value };
       return updated;
     });
-  }, []);
-  
-  // Handle dimension parameter selection
-  const handleSelectDimensionParameter = useCallback((paramId: string) => {
-    setDimensionParameter(paramId);
-    setShowDimensionDropdown(false);
-    setDimensionFilterTerm('');
   }, []);
   
   // Handle parameter reordering
@@ -334,11 +286,6 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
           });
         }
       });
-      
-      // Check dimension dropdown
-      if (dimensionDropdownRef.current && !dimensionDropdownRef.current.contains(event.target as Node)) {
-        setShowDimensionDropdown(false);
-      }
     };
     
     document.addEventListener('mousedown', handleClickOutside);
@@ -356,20 +303,25 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
     });
   };
   
-  // Toggle dimension dropdown visibility
-  const toggleDimensionDropdown = () => {
-    setShowDimensionDropdown(prev => !prev);
-  };
+  // Handle parameter conversion toggle
+  const handleConversionToggle = useCallback((index: number, checked: boolean) => {
+    setSelectedParameters(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], convertToMillimeters: checked };
+      return updated;
+    });
+  }, []);
   
-  // Get dimension parameter display name
-  const getDimensionDisplayName = useCallback(() => {
-    if (!dimensionParameter) return null;
-    const param = getParameterById(dimensionParameter);
-    return param ? (param.description || param.name) : null;
-  }, [dimensionParameter, getParameterById]);
+  // Initialize the BaseNode component with proper type checking
+  const BaseNodeComponent = BaseNode as React.ComponentType<any>;
+  
+  // Ensure consistent rendering between server and client
+  const safeParameters = parameters || [];
+  const safeFilteredParameters = filteredParameters || Array(5).fill([]);
+  const safeFormattedString = formattedString || '';
   
   return (
-    <BaseNode<JsonParameterFormatterNodeData>
+    <BaseNodeComponent
       data={data}
       isConnectable={isConnectable}
       handles={{
@@ -388,20 +340,10 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         outputs: [
           { 
             id: 'output', 
-            position: 30,
+            position: 50,
             style: { 
               background: '#f59e0b',
               border: '2px solid #f59e0b',
-              width: '10px',
-              height: '10px'
-            }
-          },
-          { 
-            id: 'dimension', 
-            position: 70,
-            style: { 
-              background: '#10b981',
-              border: '2px solid #10b981',
               width: '10px',
               height: '10px'
             }
@@ -455,7 +397,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Data:</span>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {parameters.length} parameters
+              {safeParameters.length} parameters
             </span>
           </div>
         </div>
@@ -465,17 +407,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
       <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800">
         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formatted Output:</div>
         <div className="font-mono text-sm text-blue-600 dark:text-blue-400 break-all">
-          {formattedString || 'No output yet'}
-        </div>
-      </div>
-      
-      {/* Dimension Value - Always show */}
-      <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-md border border-green-200 dark:border-green-800">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dimension Value:</div>
-        <div className="font-mono text-sm text-green-600 dark:text-green-400">
-          {dimensionValue !== null 
-            ? `${dimensionValue} ${getDimensionDisplayName() ? `(${getDimensionDisplayName()})` : ''}` 
-            : 'No dimension selected'}
+          {safeFormattedString || 'No output yet'}
         </div>
       </div>
       
@@ -529,8 +461,8 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                         
                         {/* Parameter List */}
                         <div className="max-h-[150px] overflow-y-auto">
-                          {filteredParameters[index].length > 0 ? (
-                            filteredParameters[index].map((param) => (
+                          {safeFilteredParameters[index].length > 0 ? (
+                            safeFilteredParameters[index].map((param) => (
                               <div 
                                 key={param.id}
                                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
@@ -580,91 +512,34 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
                   </div>
                 </div>
                 
-                {/* Custom Label Input */}
+                {/* Custom Label Input and Conversion Checkbox */}
                 {selected.paramId && (
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      placeholder="Custom label (optional)"
-                      className="w-full p-2 border rounded text-sm bg-white dark:bg-gray-700 nodrag"
-                      value={selected.customLabel || ''}
-                      onChange={(e) => handleCustomLabelChange(index, e.target.value)}
-                    />
+                  <div className="mt-1 flex gap-2 items-center">
+                    <div className="flex-grow">
+                      <input
+                        type="text"
+                        placeholder="Custom label (optional)"
+                        className="w-full p-2 border rounded text-sm bg-white dark:bg-gray-700 nodrag"
+                        value={selected.customLabel || ''}
+                        onChange={(e) => handleCustomLabelChange(index, e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        id={`convert-to-mm-param-${index}-${id}`}
+                        className="mr-1 nodrag"
+                        checked={selected.convertToMillimeters || false}
+                        onChange={(e) => handleConversionToggle(index, e.target.checked)}
+                      />
+                      <label htmlFor={`convert-to-mm-param-${index}-${id}`} className="text-xs text-gray-700 dark:text-gray-300">
+                        ×1000
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
             ))}
-          </div>
-          
-          {/* Dimension Parameter Section */}
-          <div className="mb-4">
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dimension Parameter:</div>
-            
-            <div className="flex gap-2 items-center">
-              {/* Dimension Parameter Selector */}
-              <div 
-                ref={dimensionDropdownRef} 
-                className="relative flex-grow"
-              >
-                <div 
-                  onClick={toggleDimensionDropdown}
-                  className="p-2 border rounded cursor-pointer bg-white dark:bg-gray-700 flex justify-between items-center nodrag"
-                >
-                  <span className="truncate">
-                    {dimensionParameter 
-                      ? getParameterById(dimensionParameter)?.description || getParameterById(dimensionParameter)?.name || 'Select dimension' 
-                      : 'Select dimension'}
-                  </span>
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                
-                {/* Dropdown */}
-                {showDimensionDropdown && (
-                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
-                    {/* Search Input */}
-                    <div className="p-2 border-b border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        placeholder="Search parameters..."
-                        className="w-full p-1 border rounded text-sm nodrag"
-                        value={dimensionFilterTerm}
-                        onChange={(e) => setDimensionFilterTerm(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    
-                    {/* Parameter List */}
-                    <div className="max-h-[150px] overflow-y-auto">
-                      {filteredDimensionParameters.length > 0 ? (
-                        filteredDimensionParameters.map((param) => (
-                          <div 
-                            key={param.id}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                            onClick={() => handleSelectDimensionParameter(param.id)}
-                          >
-                            <div className="flex justify-between">
-                              <div className="font-medium text-sm">{param.name}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">{param.valueType}</div>
-                            </div>
-                            {param.description && (
-                              <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                                {param.description}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-2 text-center text-gray-500 dark:text-gray-400 text-sm">
-                          No parameters found
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
           
           {/* Settings */}
@@ -734,13 +609,12 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         isConnectable={isConnectable}
       />
       
-      {/* Output Handles */}
+      {/* Output Handle */}
       <Handle
         type="source"
         position={Position.Right}
         id="output"
         style={{ 
-          top: '30%',
           background: '#f59e0b', 
           width: '10px', 
           height: '10px',
@@ -748,21 +622,7 @@ const JsonParameterFormatterNode: React.FC<NodeProps<JsonParameterFormatterNodeD
         }}
         isConnectable={isConnectable}
       />
-      
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="dimension"
-        style={{ 
-          top: '70%',
-          background: '#10b981', 
-          width: '10px', 
-          height: '10px',
-          border: '2px solid #10b981'
-        }}
-        isConnectable={isConnectable}
-      />
-    </BaseNode>
+    </BaseNodeComponent>
   );
 };
 

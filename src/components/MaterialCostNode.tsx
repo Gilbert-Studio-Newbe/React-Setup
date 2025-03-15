@@ -107,6 +107,10 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
         // Get string input from source node
         if (sourceNode.data.outputValue !== undefined) {
           newInputString = String(sourceNode.data.outputValue);
+        } else if (sourceNode.data.dimensionOutputValue !== undefined && sourceNode.data.dimensionOutputValue !== null) {
+          // Handle dimension output from JsonParameterFormatterNode
+          newInputString = String(sourceNode.data.dimensionOutputValue);
+          console.log('Using dimension output value:', sourceNode.data.dimensionOutputValue);
         }
       } else if (edge.targetHandle === 'input-csv') {
         // Get CSV data from source node
@@ -158,7 +162,37 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
       // Extract cost from first matching record
       if (matches.length > 0) {
         // Look for cost field with various possible names
-        const costField = matches[0]['Cost ($Lm)'] || matches[0]['Cost'] || matches[0]['Price'] || null;
+        // First, log the available columns for debugging
+        console.log('Available columns in matched record:', Object.keys(matches[0]));
+        
+        // Try to find the cost column with a more flexible approach
+        let costField = null;
+        const costColumnNames = Object.keys(matches[0]).filter(key => 
+          key.toLowerCase().includes('cost') || 
+          key.toLowerCase().includes('price') ||
+          key.toLowerCase().includes('$')
+        );
+        
+        if (costColumnNames.length > 0) {
+          costField = matches[0][costColumnNames[0]];
+          console.log('Found cost column:', costColumnNames[0], 'with value:', costField);
+          
+          // Ensure the cost has a dollar sign if it's a number
+          if (typeof costField === 'number') {
+            costField = `$${costField.toFixed(2)}`;
+          } else if (typeof costField === 'string') {
+            if (!costField.includes('$')) {
+              // Try to parse as number and format with dollar sign
+              const parsed = parseFloat(costField);
+              if (!isNaN(parsed)) {
+                costField = `$${parsed.toFixed(2)}`;
+              }
+            }
+          }
+        } else {
+          console.log('No cost column found in:', Object.keys(matches[0]));
+        }
+        
         setCost(costField);
         setError('');
       } else {
@@ -177,6 +211,28 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
     setNodes(nds => 
       nds.map(node => {
         if (node.id === id) {
+          // Preserve the original cost value format (with $ if present)
+          const formattedCost = cost !== null ? cost : null;
+          
+          // For numeric calculations, extract the numeric value
+          let numericCost = null;
+          if (typeof cost === 'number') {
+            numericCost = cost;
+          } else if (typeof cost === 'string') {
+            // Extract numeric part from string (e.g. "$4.09" -> 4.09)
+            const match = cost.match(/[-+]?[0-9]*\.?[0-9]+/);
+            if (match) {
+              numericCost = parseFloat(match[0]);
+              // Round to 4 decimal places to avoid floating point issues
+              numericCost = Math.round(numericCost * 10000) / 10000;
+            }
+          }
+          
+          console.log('Setting Material Cost node data:', {
+            formattedCost,
+            numericCost
+          });
+          
           return {
             ...node,
             data: {
@@ -184,9 +240,10 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
               inputString,
               csvData,
               matchingRecords,
-              cost,
+              cost: formattedCost,
               error,
-              outputValue: cost
+              outputValue: formattedCost, // Keep the formatted value as the primary output
+              numericOutputValue: numericCost // Add numeric value for calculations
             }
           };
         }
@@ -286,7 +343,7 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
           </span>
         </div>
         <div className="font-mono text-lg font-bold text-green-600 dark:text-green-400 text-center">
-          {cost !== null ? `$${cost}` : 'N/A'}
+          {cost !== null ? (typeof cost === 'string' && cost.includes('$') ? cost : `$${cost}`) : 'N/A'}
         </div>
       </div>
     </BaseNode>
