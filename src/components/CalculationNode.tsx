@@ -314,7 +314,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
         inputs: [
           { 
             id: 'input1', 
-            position: 30, 
+            position: 50, 
             style: { 
               background: '#6366f1',
               border: '2px solid #6366f1',
@@ -324,7 +324,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
           },
           { 
             id: 'input2', 
-            position: 70, 
+            position: 50,
+            side: 'bottom',
             style: { 
               background: '#6366f1',
               border: '2px solid #6366f1',
@@ -427,17 +428,11 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
             {hasDollarSign ? `$${input1.toFixed(2)}` : input1}
           </span>
         </div>
-        <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
-          <span className="text-sm text-gray-600 dark:text-gray-300">Input 2:</span>
-          <span className="font-mono text-gray-800 dark:text-gray-200">
-            {hasDollarSign ? `$${input2.toFixed(2)}` : input2}
-          </span>
-        </div>
       </div>
 
       {/* Result Display */}
       <div className={`
-        p-3 rounded-md 
+        p-3 rounded-md mb-4
         ${error ? 'bg-red-50 dark:bg-red-900/30' : 'bg-blue-50 dark:bg-blue-900/30'} 
         border 
         ${error ? 'border-red-200 dark:border-red-800' : 'border-blue-200 dark:border-blue-800'}
@@ -455,6 +450,16 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
               {displayResult}
             </span>
           </div>
+        </div>
+      </div>
+      
+      {/* Input 2 Display - Moved to bottom */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+          <span className="text-sm text-gray-600 dark:text-gray-300">Input 2:</span>
+          <span className="font-mono text-gray-800 dark:text-gray-200">
+            {hasDollarSign ? `$${input2.toFixed(2)}` : input2}
+          </span>
         </div>
       </div>
     </BaseNode>

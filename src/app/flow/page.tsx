@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense, ErrorBoundary } from 'react';
 import {
   ReactFlow,
   addEdge,
@@ -20,6 +20,13 @@ import {
   useOnSelectionChange,
   OnConnect,
 } from '@xyflow/react';
+import dynamic from 'next/dynamic';
+
+// Import ContextNodeMenu with dynamic import to prevent SSR
+const ContextNodeMenu = dynamic(
+  () => import('@/components/ContextNodeMenu'),
+  { ssr: false }
+);
 
 import {
   nodes as initialNodes,
@@ -176,12 +183,68 @@ const SavePanel = ({
   );
 };
 
+// Create a client-side only error boundary component
+class ClientErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error in React Flow:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-screen flex flex-col items-center justify-center p-4 bg-red-50 text-red-800">
+          <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>
+          <p className="mb-4">There was an error loading the flow editor.</p>
+          <pre className="bg-red-100 p-4 rounded-lg overflow-auto max-w-full max-h-[400px] text-sm">
+            {this.state.error?.toString()}
+          </pre>
+          <button 
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Create a loading component
+const LoadingFallback = () => (
+  <div className="w-full h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p className="text-lg text-gray-700">Loading Flow Editor...</p>
+    </div>
+  </div>
+);
+
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const selectedElementsRef = useRef<{nodeIds: string[]; edgeIds: string[]}>({ nodeIds: [], edgeIds: [] });
+  const { screenToFlowPosition } = useReactFlow();
   
+  // State for context menu
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({ x: 0, y: 0, visible: false });
+
   // Edge configuration - update to use step line types with rounded corners
   const [edgeType, setEdgeType] = useState<'bezier' | 'straight' | 'step' | 'smoothstep'>('step');
   const [connectionLineType, setConnectionLineType] = useState<ConnectionLineType>(ConnectionLineType.Step);
@@ -191,7 +254,7 @@ function Flow() {
   
   // History management
   const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
-  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const isHistoryActionRef = useRef(false);
   const nodesJsonRef = useRef('');
   const edgesJsonRef = useRef('');
@@ -207,7 +270,7 @@ function Flow() {
         edges: safeClone(edges)
       };
       setHistory([initialState]);
-      setCurrentHistoryIndex(0);
+      setHistoryIndex(0);
       
       // Update refs with initial state
       nodesJsonRef.current = JSON.stringify(nodes);
@@ -222,37 +285,226 @@ function Flow() {
     isDraggingRef.current = true;
   }, []);
   
-  // Handle node drag stop - add to history when drag is complete
+  // Add current state to history
+  const addToHistory = useCallback(() => {
+    // Create a snapshot of the current state
+    const currentState = {
+      nodes: safeClone(nodes),
+      edges: safeClone(edges)
+    };
+    
+    // If we're not at the end of the history, truncate the future states
+    const newHistory = historyIndex < history.length - 1
+      ? [...history.slice(0, historyIndex + 1), currentState]
+      : [...history, currentState];
+    
+    // Limit history length
+    const limitedHistory = newHistory.length > MAX_HISTORY_LENGTH
+      ? newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH)
+      : newHistory;
+    
+    setHistory(limitedHistory);
+    setHistoryIndex(Math.min(historyIndex + 1, limitedHistory.length - 1));
+    
+    // Update refs with current state
+    nodesJsonRef.current = JSON.stringify(nodes);
+    edgesJsonRef.current = JSON.stringify(edges);
+    
+    console.log('History updated, length:', limitedHistory.length, 'current index:', Math.min(historyIndex + 1, limitedHistory.length - 1));
+  }, [nodes, edges, history, historyIndex]);
+  
+  // Handle node drag stop
   const handleNodeDragStop = useCallback(() => {
-    if (isDraggingRef.current) {
-      // Create a snapshot of the current state
-      const currentState = {
-        nodes: safeClone(nodes),
-        edges: safeClone(edges)
-      };
+    isDraggingRef.current = false;
+    
+    // Add to history after drag completes
+    if (!pendingHistoryUpdate.current) {
+      pendingHistoryUpdate.current = true;
       
-      // If we're not at the end of the history, truncate the future states
-      const newHistory = currentHistoryIndex < history.length - 1
-        ? [...history.slice(0, currentHistoryIndex + 1), currentState]
-        : [...history, currentState];
-      
-      // Limit history length
-      const limitedHistory = newHistory.length > MAX_HISTORY_LENGTH
-        ? newHistory.slice(newHistory.length - MAX_HISTORY_LENGTH)
-        : newHistory;
-      
-      setHistory(limitedHistory);
-      setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
-      
-      // Update refs with current state
-      nodesJsonRef.current = JSON.stringify(nodes);
-      edgesJsonRef.current = JSON.stringify(edges);
-      
-      console.log('History updated after drag, length:', limitedHistory.length, 'current index:', Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
-      
-      isDraggingRef.current = false;
+      // Use setTimeout to ensure this runs after the state updates
+      setTimeout(() => {
+        addToHistory();
+        pendingHistoryUpdate.current = false;
+      }, 0);
     }
-  }, [nodes, edges, history, currentHistoryIndex]);
+  }, [addToHistory]);
+  
+  // Handle pane double-click to show context menu
+  const handleDoubleClick = useCallback((event: React.MouseEvent, element: any) => {
+    // Only process on client side
+    if (typeof window === 'undefined') return;
+    
+    // If element is defined, it's a node double-click, not a pane double-click
+    if (element) {
+      console.log('Node double-clicked:', element);
+      return;
+    }
+    
+    // This is a pane double-click
+    console.log('Pane double-clicked at:', event.clientX, event.clientY);
+    
+    // Prevent default behavior (like zooming)
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Set the context menu position and make it visible
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      visible: true
+    });
+  }, []);
+  
+  // Add a node at the specified position
+  const addNodeAtPosition = useCallback((type: string, position: { x: number; y: number }) => {
+    // Create a unique ID
+    const id = `${type}-${Date.now()}`;
+    
+    // Initialize with empty data
+    let data: any = {};
+    
+    // Configure specific node types
+    switch (type) {
+      case 'numberinput':
+        data = {
+          label: 'Number Input',
+          value: 0,
+          min: 0,
+          max: 100,
+          step: 1,
+          unit: ''
+        };
+        break;
+      case 'costinput':
+        data = {
+          label: 'Cost Input',
+          value: 0,
+          currency: '$',
+          description: 'Enter cost amount'
+        };
+        break;
+      case 'calculation':
+        data = {
+          label: 'Calculation',
+          operation: 'add',
+          result: 0
+        };
+        break;
+      case 'join':
+        data = {
+          label: 'Join String',
+          input1: '',
+          input2: '',
+          separator: ' ',
+          result: ''
+        };
+        break;
+      case 'csvimport':
+        data = {
+          label: 'CSV Import',
+          fileName: '',
+          headers: [],
+          rowCount: 0,
+          previewRows: [],
+          isCollapsed: false
+        };
+        break;
+      case 'materialcost':
+        data = {
+          label: 'Material Cost',
+          inputString: '',
+          csvData: [],
+          matchingRecords: [],
+          cost: null,
+          error: ''
+        };
+        break;
+      case 'jsonparameterformatter':
+        const formatterLabel = prompt('Enter a label for the Parameter Formatter node:', 'Parameter Formatter');
+        const actualFormatterLabel = formatterLabel || 'Parameter Formatter';
+        
+        data = {
+          label: actualFormatterLabel,
+          jsonData: null,
+          selectedParameters: [
+            { paramId: null, order: 0, customLabel: '' },
+            { paramId: null, order: 1, customLabel: '' },
+            { paramId: null, order: 2, customLabel: '' },
+            { paramId: null, order: 3, customLabel: '' },
+            { paramId: null, order: 4, customLabel: '' }
+          ],
+          dimensionParameter: null,
+          formatTemplate: '**{label}**, {value};',
+          trimWhitespace: true,
+          handleNullValues: 'skip',
+          formattedString: '',
+          dimensionValue: null
+        };
+        break;
+      case 'result':
+        data = {
+          label: 'Result',
+          value: 0,
+          unit: '',
+          description: 'Final calculation result'
+        };
+        break;
+      case 'ifcimport':
+        data = {
+          label: 'IFC Import',
+          onFileImport: (file: File) => {
+            console.log('IFC file imported:', file.name);
+          }
+        };
+        break;
+      case 'jsonload':
+        data = {
+          label: 'JSON Load',
+          jsonData: null,
+          onJsonLoad: (jsonData: any) => {
+            console.log('JSON data loaded:', jsonData);
+          }
+        };
+        break;
+      case 'jsondisplay':
+        data = {
+          label: 'JSON Display',
+          onChange: (paramId: string, newValue: any) => {
+            console.log('Parameter updated:', paramId, newValue);
+          },
+          outputMode: 'raw'
+        };
+        break;
+      case 'debugdisplay':
+        data = {
+          label: 'Debug Display',
+          value: null,
+          description: 'Connect to any node to see its data'
+        };
+        break;
+    }
+    
+    // Create the new node
+    const newNode = {
+      id,
+      type,
+      position,
+      data
+    };
+    
+    // Add the node to the flow
+    setNodes((nds) => [...nds, newNode]);
+    
+    // Show toast notification
+    const nodeLabel = nodeTypes[type as keyof typeof nodeTypes] || type;
+    setToast({ message: `Added ${nodeLabel} node at (${Math.round(position.x)}, ${Math.round(position.y)})` });
+    setTimeout(() => setToast(null), 3000);
+    
+    // Add to history
+    setTimeout(() => {
+      addToHistory();
+    }, 100);
+  }, [setNodes, addToHistory]);
   
   // Save current state to history when edges change (but not nodes, which are handled by drag events)
   useEffect(() => {
@@ -291,8 +543,8 @@ function Flow() {
         };
         
         // If we're not at the end of the history, truncate the future states
-        const newHistory = currentHistoryIndex < history.length - 1
-          ? [...history.slice(0, currentHistoryIndex + 1), currentState]
+        const newHistory = historyIndex < history.length - 1
+          ? [...history.slice(0, historyIndex + 1), currentState]
           : [...history, currentState];
         
         // Limit history length
@@ -301,32 +553,32 @@ function Flow() {
           : newHistory;
         
         setHistory(limitedHistory);
-        setCurrentHistoryIndex(Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
+        setHistoryIndex(Math.min(historyIndex + 1, limitedHistory.length - 1));
         
-        console.log('History updated for edge change, length:', limitedHistory.length, 'current index:', Math.min(currentHistoryIndex + 1, limitedHistory.length - 1));
+        console.log('History updated for edge change, length:', limitedHistory.length, 'current index:', Math.min(historyIndex + 1, limitedHistory.length - 1));
       } catch (error) {
         console.error('Error updating history:', error);
       } finally {
         pendingHistoryUpdate.current = false;
       }
     });
-  }, [edges, nodes, history, currentHistoryIndex]);
+  }, [edges, nodes, history, historyIndex]);
   
   // Handle undo action
   const handleUndo = useCallback(() => {
-    console.log('Undo triggered, history length:', history.length, 'current index:', currentHistoryIndex);
+    console.log('Undo triggered, history length:', history.length, 'current index:', historyIndex);
     
-    if (currentHistoryIndex > 0 && history.length > 0) {
+    if (historyIndex > 0 && history.length > 0) {
       try {
         isHistoryActionRef.current = true;
-        const prevState = history[currentHistoryIndex - 1];
+        const prevState = history[historyIndex - 1];
         
         if (!prevState) {
           console.error('Previous state is undefined');
           return;
         }
         
-        console.log('Applying previous state at index:', currentHistoryIndex - 1);
+        console.log('Applying previous state at index:', historyIndex - 1);
         
         // Create clean copies of the previous state
         const prevNodes = safeClone(prevState.nodes);
@@ -335,7 +587,7 @@ function Flow() {
         // Update the state
         setNodes(prevNodes);
         setEdges(prevEdges);
-        setCurrentHistoryIndex(currentHistoryIndex - 1);
+        setHistoryIndex(historyIndex - 1);
         
         // Show toast notification
         setToast({ message: 'Undo successful' });
@@ -351,14 +603,14 @@ function Flow() {
       setToast({ message: 'Nothing to undo' });
       setTimeout(() => setToast(null), 3000);
     }
-  }, [history, currentHistoryIndex, setNodes, setEdges]);
+  }, [history, historyIndex, setNodes, setEdges]);
   
   // Handle redo action
   const handleRedo = useCallback(() => {
-    if (currentHistoryIndex < history.length - 1 && history.length > 0) {
+    if (historyIndex < history.length - 1 && history.length > 0) {
       try {
         isHistoryActionRef.current = true;
-        const nextState = history[currentHistoryIndex + 1];
+        const nextState = history[historyIndex + 1];
         
         if (!nextState) {
           console.error('Next state is undefined');
@@ -372,7 +624,7 @@ function Flow() {
         // Update the state
         setNodes(nextNodes);
         setEdges(nextEdges);
-        setCurrentHistoryIndex(currentHistoryIndex + 1);
+        setHistoryIndex(historyIndex + 1);
         
         // Show toast notification
         setToast({ message: 'Redo successful' });
@@ -387,7 +639,7 @@ function Flow() {
       setToast({ message: 'Nothing to redo' });
       setTimeout(() => setToast(null), 3000);
     }
-  }, [history, currentHistoryIndex, setNodes, setEdges]);
+  }, [history, historyIndex, setNodes, setEdges]);
   
   // Handle selection changes
   const handleSelectionChange = useCallback((nodeIds: string[], edgeIds: string[]) => {
@@ -620,13 +872,17 @@ function Flow() {
                   };
                 } else {
                   // Generic approach for other node types
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      value: outputValue
-                    }
-                  };
+                  shouldUpdate = node.data.value !== outputValue;
+                  if (shouldUpdate) {
+                    updated = true;
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        value: outputValue
+                      }
+                    };
+                  }
                 }
               }
               return node;
@@ -715,13 +971,17 @@ function Flow() {
                 }
               } else {
                 // Generic approach for other node types
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    value: outputValue
-                  }
-                };
+                shouldUpdate = node.data.value !== outputValue;
+                if (shouldUpdate) {
+                  updated = true;
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      value: outputValue
+                    }
+                  };
+                }
               }
             }
             return node;
@@ -911,50 +1171,50 @@ function Flow() {
                       value: outputValue
                     }
                   };
-                }
-              } else if (node.type === 'calculation') {
-                // For calculation nodes, determine which input to update based on the connection
-                const isInput1 = connection.targetHandle === 'input1';
-                
-                // Ensure the value is a number for calculation nodes
-                let calcValue = outputValue;
-                if (typeof calcValue === 'string') {
-                  const parsed = parseFloat(calcValue);
-                  if (!isNaN(parsed)) {
-                    calcValue = parsed;
-                  } else {
-                    calcValue = 0; // Default to 0 if we can't parse a number
+                } else if (node.type === 'calculation') {
+                  // For calculation nodes, determine which input to update based on the connection
+                  const isInput1 = connection.targetHandle === 'input1';
+                  
+                  // Ensure the value is a number for calculation nodes
+                  let calcValue = outputValue;
+                  if (typeof calcValue === 'string') {
+                    const parsed = parseFloat(calcValue);
+                    if (!isNaN(parsed)) {
+                      calcValue = parsed;
+                    } else {
+                      calcValue = 0; // Default to 0 if we can't parse a number
+                    }
+                  } else if (calcValue === null || calcValue === undefined) {
+                    calcValue = 0;
                   }
-                } else if (calcValue === null || calcValue === undefined) {
-                  calcValue = 0;
-                }
-                
-                // Force to number type to ensure proper calculation
-                calcValue = Number(calcValue);
-                
-                // Create a new data object with the updated input and force recalculation
-                updated = true;
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    [isInput1 ? 'input1' : 'input2']: calcValue,
-                    // Remove result to force recalculation
-                    result: undefined
-                  }
-                };
-              } else {
-                // Generic approach for other node types
-                shouldUpdate = node.data.value !== outputValue;
-                if (shouldUpdate) {
+                  
+                  // Force to number type to ensure proper calculation
+                  calcValue = Number(calcValue);
+                  
+                  // Create a new data object with the updated input and force recalculation
                   updated = true;
                   return {
                     ...node,
                     data: {
                       ...node.data,
-                      value: outputValue
+                      [isInput1 ? 'input1' : 'input2']: calcValue,
+                      // Remove result to force recalculation
+                      result: undefined
                     }
                   };
+                } else {
+                  // Generic approach for other node types
+                  shouldUpdate = node.data.value !== outputValue;
+                  if (shouldUpdate) {
+                    updated = true;
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        value: outputValue
+                      }
+                    };
+                  }
                 }
               }
             }
@@ -1481,7 +1741,7 @@ function Flow() {
   }, [setNodes, setEdges, saveDefaultFlow]);
 
   return (
-    <div className="w-screen h-screen relative">
+    <div className="w-full h-screen">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1490,9 +1750,31 @@ function Flow() {
         onConnect={onConnect}
         onNodeDragStart={handleNodeDragStart}
         onNodeDragStop={handleNodeDragStop}
+        onPaneClick={(event) => {
+          // Close context menu when clicking elsewhere on the pane
+          if (contextMenu.visible) {
+            setContextMenu({ ...contextMenu, visible: false });
+          }
+        }}
+        onPaneContextMenu={(event) => {
+          // Prevent default context menu
+          event.preventDefault();
+          
+          // Show our custom context menu at the mouse position
+          setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
+            visible: true
+          });
+        }}
+        onDoubleClick={handleDoubleClick}
         deleteKeyCode="Delete"
         fitView
-        attributionPosition="top-right"
+        zoomOnDoubleClick={false}
+        zoomOnScroll={true}
+        panOnScroll={false}
+        panOnDrag={true}
+        attributionPosition="bottom-left"
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionLineType={ConnectionLineType.Step}
@@ -1508,13 +1790,47 @@ function Flow() {
           }
         }}
       >
-        <MiniMap zoomable pannable nodeClassName={nodeClassName} />
-        <Controls />
         <Background />
-        
-        {/* Utility components for keyboard shortcuts and selection tracking */}
+        <Controls />
+        <MiniMap />
+        <Panel position="top-right">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => handleAction('undo')}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              disabled={historyIndex <= 0}
+            >
+              Undo
+            </button>
+            <button
+              onClick={() => handleAction('redo')}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              disabled={historyIndex >= history.length - 1}
+            >
+              Redo
+            </button>
+          </div>
+        </Panel>
         <KeyboardShortcuts onShortcut={handleAction} />
         <SelectionTracker onSelectionChange={handleSelectionChange} />
+        
+        {/* Context Menu for adding nodes on double-click */}
+        {contextMenu.visible && (
+          <ContextNodeMenu
+            position={{ x: contextMenu.x, y: contextMenu.y }}
+            onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+            onNodeSelect={(type) => {
+              const reactFlowBounds = document.querySelector('.react-flow')?.getBoundingClientRect();
+              if (reactFlowBounds) {
+                const position = screenToFlowPosition({
+                  x: contextMenu.x - reactFlowBounds.left,
+                  y: contextMenu.y - reactFlowBounds.top
+                });
+                addNodeAtPosition(type, position);
+              }
+            }}
+          />
+        )}
       </ReactFlow>
       
       {/* UI Components */}
@@ -1528,11 +1844,11 @@ function Flow() {
         onLoadDefault={loadDefaultFlow}
       />
       
+      {/* Toast notification */}
       {toast && (
-        <Toast 
-          message={toast.message} 
-          onClose={() => setToast(null)} 
-        />
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+          {toast.message}
+        </div>
       )}
     </div>
   );
@@ -1540,9 +1856,24 @@ function Flow() {
 
 // Wrap the Flow component with ReactFlowProvider to ensure context is available
 export default function FlowPage() {
+  // State to track if we're on client side
+  const [isClient, setIsClient] = useState(false);
+  
+  // Set isClient to true when component mounts (client-side only)
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Only render on client side
+  if (!isClient) {
+    return <LoadingFallback />;
+  }
+
   return (
-    <ReactFlowProvider>
-      <Flow />
-    </ReactFlowProvider>
+    <ClientErrorBoundary>
+      <ReactFlowProvider>
+        <Flow />
+      </ReactFlowProvider>
+    </ClientErrorBoundary>
   );
 } 

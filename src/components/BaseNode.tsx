@@ -16,11 +16,13 @@ interface BaseNodeProps<T extends BaseNodeData> extends NodeProps<T> {
     inputs?: Array<{
       id: string;
       position?: number;
+      side?: 'left' | 'right' | 'top' | 'bottom';
       style?: React.CSSProperties;
     }>;
     outputs?: Array<{
       id: string;
       position?: number;
+      side?: 'left' | 'right' | 'top' | 'bottom';
       style?: React.CSSProperties;
     }>;
   };
@@ -62,43 +64,79 @@ export const BaseNode = <T extends BaseNodeData>({
       )}
 
       {/* Input Handles */}
-      {handles.inputs?.map((input, index) => (
-        <Handle
-          key={input.id}
-          type="target"
-          position={Position.Left}
-          id={input.id}
-          style={{ 
-            top: `${input.position || (((index + 1) / (handles.inputs?.length || 1)) * 100)}%`,
-            background: '#6366f1',
-            width: '10px',
-            height: '10px',
-            border: '2px solid #6366f1',
-            ...input.style
-          }}
-          isConnectable={isConnectable}
-        />
-      ))}
+      {handles.inputs?.map((input, index) => {
+        // Determine the position based on the side property
+        const handlePosition = input.side ? Position[input.side.charAt(0).toUpperCase() + input.side.slice(1)] : Position.Left;
+        
+        // Calculate the style based on the side
+        let style: React.CSSProperties = { 
+          background: '#6366f1',
+          width: '10px',
+          height: '10px',
+          border: '2px solid #6366f1',
+          ...input.style
+        };
+        
+        // Position the handle based on the side
+        if (input.side === 'left' || input.side === undefined) {
+          style.top = `${input.position || (((index + 1) / (handles.inputs?.length || 1)) * 100)}%`;
+        } else if (input.side === 'right') {
+          style.top = `${input.position || (((index + 1) / (handles.inputs?.length || 1)) * 100)}%`;
+        } else if (input.side === 'top') {
+          style.left = `${input.position || (((index + 1) / (handles.inputs?.length || 1)) * 100)}%`;
+        } else if (input.side === 'bottom') {
+          style.left = `${input.position || (((index + 1) / (handles.inputs?.length || 1)) * 100)}%`;
+        }
+        
+        return (
+          <Handle
+            key={input.id}
+            type="target"
+            position={handlePosition}
+            id={input.id}
+            style={style}
+            isConnectable={isConnectable}
+          />
+        );
+      })}
 
       {/* Output Handles */}
-      {handles.outputs?.map((output, index) => (
-        <Handle
-          key={output.id}
-          type="source"
-          position={Position.Right}
-          id={output.id}
-          style={{ 
-            top: `${output.position || (((index + 1) / (handles.outputs?.length || 1)) * 100)}%`,
-            background: error ? '#ef4444' : '#f59e0b',
-            width: '10px',
-            height: '10px',
-            border: error ? '2px solid #ef4444' : '2px solid #f59e0b',
-            transition: 'all 0.2s',
-            ...output.style
-          }}
-          isConnectable={isConnectable}
-        />
-      ))}
+      {handles.outputs?.map((output, index) => {
+        // Determine the position based on the side property
+        const handlePosition = output.side ? Position[output.side.charAt(0).toUpperCase() + output.side.slice(1)] : Position.Right;
+        
+        // Calculate the style based on the side
+        let style: React.CSSProperties = { 
+          background: error ? '#ef4444' : '#f59e0b',
+          width: '10px',
+          height: '10px',
+          border: error ? '2px solid #ef4444' : '2px solid #f59e0b',
+          transition: 'all 0.2s',
+          ...output.style
+        };
+        
+        // Position the handle based on the side
+        if (output.side === 'right' || output.side === undefined) {
+          style.top = `${output.position || (((index + 1) / (handles.outputs?.length || 1)) * 100)}%`;
+        } else if (output.side === 'left') {
+          style.top = `${output.position || (((index + 1) / (handles.outputs?.length || 1)) * 100)}%`;
+        } else if (output.side === 'top') {
+          style.left = `${output.position || (((index + 1) / (handles.outputs?.length || 1)) * 100)}%`;
+        } else if (output.side === 'bottom') {
+          style.left = `${output.position || (((index + 1) / (handles.outputs?.length || 1)) * 100)}%`;
+        }
+        
+        return (
+          <Handle
+            key={output.id}
+            type="source"
+            position={handlePosition}
+            id={output.id}
+            style={style}
+            isConnectable={isConnectable}
+          />
+        );
+      })}
     </div>
   );
 };

@@ -96,6 +96,20 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
     let newInputString = '';
     let newCsvData: any[] = [];
     
+    // Check if both inputs are connected
+    const hasStringInput = incomingEdges.some(edge => edge.targetHandle === 'input-string');
+    const hasCsvInput = incomingEdges.some(edge => edge.targetHandle === 'input-csv');
+    
+    // If either input is disconnected, zero the calculation
+    if (!hasStringInput || !hasCsvInput) {
+      setInputString(hasStringInput ? inputString : '');
+      setCsvData(hasCsvInput ? csvData : []);
+      setMatchingRecords([]);
+      setCost('$0.00');
+      setError('');
+      return;
+    }
+    
     // Process each incoming connection
     incomingEdges.forEach(edge => {
       // Find the source node
@@ -135,10 +149,14 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
   
   // Process data and find matches when inputs change
   useEffect(() => {
-    if (!inputString || !csvData.length) {
-      // Reset if we don't have both inputs
+    // Check if both inputs are connected by checking if we have data
+    const hasStringInput = !!inputString;
+    const hasCsvInput = csvData.length > 0;
+    
+    // If either input is missing, zero the calculation
+    if (!hasStringInput || !hasCsvInput) {
       if (matchingRecords.length > 0) setMatchingRecords([]);
-      if (cost !== null) setCost(null);
+      if (cost !== '$0.00') setCost('$0.00');
       if (error) setError('');
       return;
     }
@@ -225,7 +243,15 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
               numericCost = parseFloat(match[0]);
               // Round to 4 decimal places to avoid floating point issues
               numericCost = Math.round(numericCost * 10000) / 10000;
+            } else {
+              // If no numeric part found and we have a string, set to 0
+              numericCost = 0;
             }
+          }
+          
+          // If cost is '$0.00' from a disconnected input, ensure numericCost is 0
+          if (cost === '$0.00' && !inputString && !csvData.length) {
+            numericCost = 0;
           }
           
           console.log('Setting Material Cost node data:', {
@@ -343,7 +369,7 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
           </span>
         </div>
         <div className="font-mono text-lg font-bold text-green-600 dark:text-green-400 text-center">
-          {cost !== null ? (typeof cost === 'string' && cost.includes('$') ? cost : `$${cost}`) : 'N/A'}
+          {cost !== null ? (typeof cost === 'string' && cost.includes('$') ? cost : `$${cost}`) : '$0.00'}
         </div>
       </div>
     </BaseNode>
