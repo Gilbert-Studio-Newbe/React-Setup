@@ -559,7 +559,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       {/* Title with Collapse Toggle */}
       <div className="mb-3 flex justify-between items-center">
         <div className="text-lg font-bold text-black dark:text-white">
-          {label}
+          {selectedParam ? (selectedParam.description || selectedParam.name) : label}
         </div>
         {localJsonData && (
           <button 
@@ -572,67 +572,61 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       </div>
       
       {/* Basic Info - Always show in collapsed mode */}
-      {localJsonData && isCollapsed && selectedParam && (
+      {localJsonData && isCollapsed && (
         <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600">
-          <div className="font-medium">{selectedParam.name}</div>
-          {selectedParam.description && (
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              {selectedParam.description}
+          {/* Element Info - Only show if no parameter is selected */}
+          {!selectedParam && (
+            <>
+              {localJsonData.bim_element_id && (
+                <div className="mb-1">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Element ID:</span>
+                  <div className="text-sm text-black dark:text-white truncate">
+                    {localJsonData.bim_element_id}
+                  </div>
+                </div>
+              )}
+              {localJsonData.item_name && (
+                <div className="mb-1">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Item Name:</span>
+                  <div className="text-sm text-black dark:text-white">
+                    {localJsonData.item_name}
+                  </div>
+                </div>
+              )}
+              {localJsonData.bim_product_id && (
+                <div className="mb-1">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Product ID:</span>
+                  <div className="text-sm text-black dark:text-white">
+                    {localJsonData.bim_product_id}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          
+          {/* Selected Parameter Info - Simplified display */}
+          {selectedParam && (
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                {selectedParam.valueType}
+              </div>
+              <div className="text-lg font-mono font-bold">
+                {outputMode === 'withUnits' 
+                  ? formatValue(
+                      editedValues[selectedParam.id] !== undefined 
+                        ? editedValues[selectedParam.id] 
+                        : selectedParam.value, 
+                      selectedParam.valueType
+                    )
+                  : outputMode === 'formatted'
+                    ? (typeof outputValue === 'number' ? outputValue.toFixed(2) : outputValue)
+                    : outputValue
+                }
+              </div>
             </div>
           )}
-          <div className="flex justify-between items-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {selectedParam.valueType}
-            </div>
-            <div className="text-sm font-mono font-bold">
-              {formatValue(
-                editedValues[selectedParam.id] !== undefined 
-                  ? editedValues[selectedParam.id] 
-                  : selectedParam.value, 
-                selectedParam.valueType
-              )}
-            </div>
-          </div>
           
-          {/* Output Mode Selection - Show even in collapsed mode */}
-          <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
-            <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Output Mode:</div>
-            <div className="flex gap-2">
-              <button
-                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                  outputMode === 'raw' 
-                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                }`}
-                onClick={() => handleOutputModeChange('raw')}
-              >
-                Raw
-              </button>
-              <button
-                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                  outputMode === 'formatted' 
-                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                }`}
-                onClick={() => handleOutputModeChange('formatted')}
-              >
-                Formatted
-              </button>
-              <button
-                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                  outputMode === 'withUnits' 
-                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                }`}
-                onClick={() => handleOutputModeChange('withUnits')}
-              >
-                With Units
-              </button>
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Output: <span className="font-mono">{String(outputValue)}</span>
-            </div>
-          </div>
+          {/* Output Mode Selection is hidden in collapsed mode */}
         </div>
       )}
       
@@ -734,48 +728,48 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
                       {renderInputControl(selectedParam)}
                     </div>
                   </div>
-                  
-                  {/* Output Mode Selection in expanded view */}
-                  <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
-                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Output Mode:</div>
-                    <div className="flex gap-2">
-                      <button
-                        className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                          outputMode === 'raw' 
-                            ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                        }`}
-                        onClick={() => handleOutputModeChange('raw')}
-                      >
-                        Raw
-                      </button>
-                      <button
-                        className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                          outputMode === 'formatted' 
-                            ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                        }`}
-                        onClick={() => handleOutputModeChange('formatted')}
-                      >
-                        Formatted
-                      </button>
-                      <button
-                        className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                          outputMode === 'withUnits' 
-                            ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                        }`}
-                        onClick={() => handleOutputModeChange('withUnits')}
-                      >
-                        With Units
-                      </button>
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Output: <span className="font-mono">{String(outputValue)}</span>
-                    </div>
-                  </div>
                 </div>
               )}
+              
+              {/* Output Mode Selection in expanded view - always visible */}
+              <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Output Mode:</div>
+                <div className="flex gap-2">
+                  <button
+                    className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                      outputMode === 'raw' 
+                        ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                    }`}
+                    onClick={() => handleOutputModeChange('raw')}
+                  >
+                    Raw
+                  </button>
+                  <button
+                    className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                      outputMode === 'formatted' 
+                        ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                    }`}
+                    onClick={() => handleOutputModeChange('formatted')}
+                  >
+                    Formatted
+                  </button>
+                  <button
+                    className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                      outputMode === 'withUnits' 
+                        ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+                    }`}
+                    onClick={() => handleOutputModeChange('withUnits')}
+                  >
+                    With Units
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Output: <span className="font-mono">{String(outputValue)}</span>
+                </div>
+              </div>
             </>
           ) : (
             <div className="text-center p-4 text-gray-500 dark:text-gray-400">
@@ -809,7 +803,6 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
           border: '2px solid #000'
         }}
         isConnectable={isConnectable}
-        id="output"
       />
     </div>
   );

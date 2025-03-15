@@ -10,6 +10,8 @@ interface CalculationNodeData extends BaseNodeData {
   operation?: 'add' | 'subtract' | 'multiply' | 'divide';
   result?: number;
   hasDollarSign?: boolean;
+  customName?: string;
+  isExpanded?: boolean;
 }
 
 const defaultData: CalculationNodeData = {
@@ -19,7 +21,9 @@ const defaultData: CalculationNodeData = {
   operation: 'add',
   result: 0,
   outputValue: 0,
-  hasDollarSign: false
+  hasDollarSign: false,
+  customName: '',
+  isExpanded: false
 };
 
 const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defaultData, isConnectable, id }) => {
@@ -36,6 +40,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   const [result, setResult] = useState<number | string>(data.result ?? 0);
   const [error, setError] = useState<string>('');
   const [hasDollarSign, setHasDollarSign] = useState<boolean>(data.hasDollarSign ?? false);
+  const [customName, setCustomName] = useState<string>(data.customName ?? '');
+  const [isExpanded, setIsExpanded] = useState<boolean>(data.isExpanded ?? false);
   
   // Track if we're currently processing an update to prevent loops
   const processingUpdate = React.useRef(false);
@@ -94,7 +100,9 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
             input1,
             input2,
             operation,
-            hasDollarSign
+            hasDollarSign,
+            customName,
+            isExpanded
           };
           return {
             ...node,
@@ -104,7 +112,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
         return node;
       })
     );
-  }, [input1, input2, operation, id, setNodes, hasDollarSign]);
+  }, [input1, input2, operation, id, setNodes, hasDollarSign, customName, isExpanded]);
 
   // Handle incoming connections and updates
   useEffect(() => {
@@ -251,6 +259,33 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
     divide: '÷'
   };
 
+  // Toggle expanded state
+  const toggleExpanded = () => {
+    const newExpandedState = !isExpanded;
+    setIsExpanded(newExpandedState);
+    
+    // Update node data
+    if (id) {
+      setNodes(nds => 
+        nds.map(node => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                isExpanded: newExpandedState
+              }
+            };
+          }
+          return node;
+        })
+      );
+    }
+  };
+
+  // Get display name (custom name or default label)
+  const displayName = customName || data.label || 'Calculate';
+
   // Format the display result with dollar sign if needed
   const displayResult = typeof result === 'number' 
     ? (hasDollarSign ? `$${result.toFixed(2)}` : result.toLocaleString()) 
@@ -309,6 +344,35 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
         ]
       }}
     >
+      {/* Title with Expand/Collapse Toggle */}
+      <div className="mb-3 flex justify-between items-center">
+        <div className="text-lg font-bold text-black dark:text-white">
+          {displayName}
+        </div>
+        <button 
+          onClick={toggleExpanded}
+          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
+        >
+          {isExpanded ? 'Collapse' : 'Expand'}
+        </button>
+      </div>
+      
+      {/* Custom Name Input - Only show when expanded */}
+      {isExpanded && (
+        <div className="mb-4">
+          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+            Custom Name:
+          </label>
+          <input
+            type="text"
+            className="w-full p-2 border rounded bg-white dark:bg-gray-700 nodrag"
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            placeholder="Enter a custom name"
+          />
+        </div>
+      )}
+
       {/* Operation Selector */}
       <div className="mb-4">
         <select
