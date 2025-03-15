@@ -175,6 +175,70 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     }
   }, [jsonData, selectedParamId, editedValues, updateOutputValue]);
   
+  // Save selected parameter to localStorage when it changes
+  useEffect(() => {
+    if (id && selectedParamId) {
+      try {
+        // Use node ID as part of the storage key to make it unique per node
+        localStorage.setItem(`jsonDisplayNode_${id}_selectedParam`, selectedParamId);
+        console.log(`Saved selected parameter ${selectedParamId} for node ${id} to localStorage`);
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+    }
+  }, [id, selectedParamId]);
+  
+  // Load selected parameter from localStorage on initial render
+  useEffect(() => {
+    if (id && !selectedParamId && localJsonData?.parameters) {
+      try {
+        const savedParamId = localStorage.getItem(`jsonDisplayNode_${id}_selectedParam`);
+        if (savedParamId) {
+          console.log(`Loaded selected parameter ${savedParamId} for node ${id} from localStorage`);
+          
+          // Check if the saved parameter exists in the current data
+          const paramExists = localJsonData.parameters.some(p => p.id === savedParamId);
+          
+          if (paramExists) {
+            // Find the parameter
+            const param = localJsonData.parameters.find(p => p.id === savedParamId);
+            
+            // Set the selected parameter ID
+            setSelectedParamId(savedParamId);
+            
+            // Update the node data with the selected parameter
+            if (param) {
+              const currentValue = editedValues[savedParamId] !== undefined ? editedValues[savedParamId] : param.value;
+              updateOutputValue(currentValue, param.valueType);
+              
+              // Update node data with the selected parameter's name/description as the title
+              setNodes(nds => 
+                nds.map(node => {
+                  if (node.id === id) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        selectedParameter: savedParamId,
+                        label: param.description || param.name
+                      }
+                    };
+                  }
+                  return node;
+                })
+              );
+              
+              // Auto-collapse when a parameter is loaded
+              setIsCollapsed(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading from localStorage:', error);
+      }
+    }
+  }, [id, localJsonData, selectedParamId, editedValues, updateOutputValue, setNodes]);
+  
   // Update node data when output value changes
   useEffect(() => {
     if (id && outputValue !== null) {
@@ -207,6 +271,21 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     }
   }, [editedValues, selectedParamId, onChange]);
   
+  // Load filter term from localStorage on initial render
+  useEffect(() => {
+    if (id) {
+      try {
+        const savedFilterTerm = localStorage.getItem(`jsonDisplayNode_${id}_filterTerm`);
+        if (savedFilterTerm !== null) {
+          console.log(`Loaded filter term for node ${id} from localStorage:`, savedFilterTerm);
+          setFilterTerm(savedFilterTerm);
+        }
+      } catch (error) {
+        console.error('Error loading filter term from localStorage:', error);
+      }
+    }
+  }, [id]);
+  
   // Filter parameters based on filter term
   const filteredParameters = useMemo(() => {
     if (!localJsonData?.parameters) return [];
@@ -234,8 +313,28 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       
       // Auto-collapse when a parameter is selected
       setIsCollapsed(true);
+      
+      // Update node data with the selected parameter's name/description as the title
+      if (id) {
+        setNodes(nds => 
+          nds.map(node => {
+            if (node.id === id) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  selectedParameter: paramId,
+                  // Use description if available, otherwise use name
+                  label: param.description || param.name
+                }
+              };
+            }
+            return node;
+          })
+        );
+      }
     }
-  }, [localJsonData, editedValues, updateOutputValue]);
+  }, [localJsonData, editedValues, updateOutputValue, id, setNodes]);
   
   // Handle value change based on parameter type
   const handleValueChange = useCallback((paramId: string, newValue: any, valueType: string) => {
@@ -266,25 +365,130 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     
     console.log('Value changed:', newValue, 'Processed value:', processedValue, 'Type:', typeof processedValue);
     
-    setEditedValues(prev => ({
-      ...prev,
+    // Update edited values state
+    const updatedValues = {
+      ...editedValues,
       [paramId]: processedValue
-    }));
+    };
+    
+    setEditedValues(updatedValues);
+    
+    // Save edited values to localStorage
+    if (id) {
+      try {
+        localStorage.setItem(`jsonDisplayNode_${id}_editedValues`, JSON.stringify(updatedValues));
+        console.log(`Saved edited values for node ${id} to localStorage`);
+      } catch (error) {
+        console.error('Error saving edited values to localStorage:', error);
+      }
+    }
     
     // Update output value based on the current output mode
     updateOutputValue(processedValue, valueType);
-  }, [updateOutputValue]);
+  }, [updateOutputValue, editedValues, id]);
+  
+  // Load edited values from localStorage on initial render
+  useEffect(() => {
+    if (id && localJsonData?.parameters) {
+      try {
+        const savedEditedValues = localStorage.getItem(`jsonDisplayNode_${id}_editedValues`);
+        if (savedEditedValues) {
+          const parsedValues = JSON.parse(savedEditedValues);
+          console.log(`Loaded edited values for node ${id} from localStorage:`, parsedValues);
+          setEditedValues(parsedValues);
+          
+          // If a parameter is selected, update its output value with the saved edited value
+          if (selectedParamId && parsedValues[selectedParamId] !== undefined) {
+            const param = localJsonData.parameters.find(p => p.id === selectedParamId);
+            if (param) {
+              updateOutputValue(parsedValues[selectedParamId], param.valueType);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading edited values from localStorage:', error);
+      }
+    }
+  }, [id, localJsonData, selectedParamId, updateOutputValue]);
   
   // Handle output mode change
   const handleOutputModeChange = useCallback((mode: 'raw' | 'formatted' | 'withUnits') => {
     console.log('Output mode change requested:', mode);
     setOutputMode(mode);
-  }, []);
+    
+    // Save output mode to localStorage
+    if (id) {
+      try {
+        localStorage.setItem(`jsonDisplayNode_${id}_outputMode`, mode);
+        console.log(`Saved output mode ${mode} for node ${id} to localStorage`);
+      } catch (error) {
+        console.error('Error saving output mode to localStorage:', error);
+      }
+    }
+  }, [id]);
+  
+  // Load output mode from localStorage on initial render
+  useEffect(() => {
+    if (id) {
+      try {
+        const savedOutputMode = localStorage.getItem(`jsonDisplayNode_${id}_outputMode`) as 'raw' | 'formatted' | 'withUnits' | null;
+        if (savedOutputMode && (savedOutputMode === 'raw' || savedOutputMode === 'formatted' || savedOutputMode === 'withUnits')) {
+          console.log(`Loaded output mode ${savedOutputMode} for node ${id} from localStorage`);
+          setOutputMode(savedOutputMode);
+          
+          // Update node data with the saved output mode
+          setNodes(nds => 
+            nds.map(node => {
+              if (node.id === id) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    outputMode: savedOutputMode
+                  }
+                };
+              }
+              return node;
+            })
+          );
+        }
+      } catch (error) {
+        console.error('Error loading output mode from localStorage:', error);
+      }
+    }
+  }, [id, setNodes]);
   
   // Toggle collapse state
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    const newCollapsedState = !isCollapsed;
+    setIsCollapsed(newCollapsedState);
+    
+    // Save collapsed state to localStorage
+    if (id) {
+      try {
+        localStorage.setItem(`jsonDisplayNode_${id}_isCollapsed`, newCollapsedState.toString());
+        console.log(`Saved collapsed state ${newCollapsedState} for node ${id} to localStorage`);
+      } catch (error) {
+        console.error('Error saving collapsed state to localStorage:', error);
+      }
+    }
   };
+  
+  // Load collapsed state from localStorage on initial render
+  useEffect(() => {
+    if (id) {
+      try {
+        const savedCollapsedState = localStorage.getItem(`jsonDisplayNode_${id}_isCollapsed`);
+        if (savedCollapsedState !== null) {
+          const collapsedState = savedCollapsedState === 'true';
+          console.log(`Loaded collapsed state ${collapsedState} for node ${id} from localStorage`);
+          setIsCollapsed(collapsedState);
+        }
+      } catch (error) {
+        console.error('Error loading collapsed state from localStorage:', error);
+      }
+    }
+  }, [id]);
   
   // Get the appropriate input control for a parameter
   const renderInputControl = (param: Parameter) => {
@@ -333,11 +537,16 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
   // Find the selected parameter
   const selectedParam = localJsonData?.parameters?.find(p => p.id === selectedParamId);
   
+  // Get the display title - use parameter description or name if selected, otherwise use default label
+  const displayTitle = selectedParam 
+    ? (selectedParam.description || selectedParam.name) 
+    : (label || 'JSON Display');
+  
   return (
     <BaseNode<JsonDisplayNodeData>
       data={{
         ...data,
-        label: label || 'JSON Display'
+        label: displayTitle
       }}
       isConnectable={isConnectable}
       error={error}
@@ -459,7 +668,19 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
                   placeholder="Filter parameters..."
                   className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white nodrag"
                   value={filterTerm}
-                  onChange={(e) => setFilterTerm(e.target.value)}
+                  onChange={(e) => {
+                    const newFilterTerm = e.target.value;
+                    setFilterTerm(newFilterTerm);
+                    
+                    // Save filter term to localStorage
+                    if (id) {
+                      try {
+                        localStorage.setItem(`jsonDisplayNode_${id}_filterTerm`, newFilterTerm);
+                      } catch (error) {
+                        console.error('Error saving filter term to localStorage:', error);
+                      }
+                    }
+                  }}
                 />
               </div>
               
