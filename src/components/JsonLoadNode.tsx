@@ -2,6 +2,7 @@
 
 import React, { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import BaseNode, { BaseNodeData } from './BaseNode';
 
 interface Parameter {
   id: string;
@@ -19,9 +20,7 @@ interface JsonData {
   [key: string]: any;
 }
 
-interface JsonLoadNodeData {
-  id?: string;
-  label?: string;
+interface JsonLoadNodeData extends BaseNodeData {
   jsonData?: JsonData;
   onJsonLoad?: (data: JsonData) => void;
 }
@@ -32,6 +31,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [expandedParameter, setExpandedParameter] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setNodes } = useReactFlow();
 
@@ -56,7 +56,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
       
       // Check if it's a JSON file
       if (!file.name.toLowerCase().endsWith('.json')) {
-        alert('Please select a JSON file (.json)');
+        setError('Please select a JSON file (.json)');
         return;
       }
       
@@ -69,6 +69,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
           // Update local state
           setJsonData(parsedData);
           setIsLoaded(true);
+          setError('');
           
           // Call the onJsonLoad callback if provided
           if (data?.onJsonLoad) {
@@ -76,7 +77,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
           }
         } catch (error) {
           console.error('Error parsing JSON:', error);
-          alert('Invalid JSON file. Please check the file format.');
+          setError('Invalid JSON file. Please check the file format.');
         }
       };
       reader.readAsText(file);
@@ -101,7 +102,6 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
     }
   };
 
-  // Format value based on its type
   const formatValue = (value: any, type: string): string => {
     if (value === null || value === undefined) return 'null';
     
@@ -109,11 +109,11 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
       case 'length':
       case 'real number':
         return typeof value === 'number' 
-          ? value.toFixed(2) 
+          ? value.toFixed(2) + (type.toLowerCase() === 'length' ? ' mm' : '') 
           : String(value);
       case 'angle':
         return typeof value === 'number' 
-          ? `${(value * (180/Math.PI)).toFixed(1)}°` 
+          ? `${value.toFixed(4)}°` 
           : String(value);
       case 'boolean':
         return value ? 'Yes' : 'No';
@@ -122,36 +122,59 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
     }
   };
 
+  // Hidden file input
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".json"
+      onChange={handleFileChange}
+      className="hidden"
+    />
+  );
+
   return (
-    <div className={`p-4 rounded-md border-2 border-black bg-white dark:bg-gray-800 shadow-md ${isExpanded ? 'w-[400px]' : 'w-[280px]'}`}>
-      {/* Title */}
-      <div className="mb-3 flex justify-between items-center">
-        <div className="text-lg font-bold text-black dark:text-white">
-          {label}
-        </div>
-        {isLoaded && (
+    <BaseNode<JsonLoadNodeData>
+      data={{
+        ...data,
+        label: label || 'JSON Load'
+      }}
+      isConnectable={isConnectable}
+      error={error}
+      handles={{
+        outputs: [
+          { 
+            id: 'output', 
+            position: 50,
+            style: { 
+              background: '#f59e0b',
+              border: '2px solid #f59e0b',
+              width: '10px',
+              height: '10px'
+            }
+          }
+        ]
+      }}
+    >
+      {/* Hidden file input */}
+      {fileInput}
+      
+      {/* Expand/Collapse Toggle */}
+      {isLoaded && jsonData && (
+        <div className="mb-3 flex justify-end">
           <button 
             onClick={toggleExpand}
             className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
           >
             {isExpanded ? 'Collapse' : 'Expand'}
           </button>
-        )}
-      </div>
-      
-      {/* File Input (hidden) */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept=".json"
-        className="hidden"
-      />
+        </div>
+      )}
       
       {/* Import Button */}
       <button
         onClick={handleBrowseClick}
-        className="w-full mb-3 px-4 py-2 bg-white hover:bg-gray-50 text-black border-2 border-black rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
+        className="w-full mb-3 px-4 py-2 bg-white hover:bg-gray-50 text-black border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -161,13 +184,13 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
       
       {/* JSON Data Display */}
       {isLoaded && jsonData && (
-        <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600 max-h-[300px] overflow-y-auto">
+        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600 max-h-[300px] overflow-y-auto">
           {/* Basic Info */}
           <div className="mb-2">
             {jsonData.bim_element_id && (
               <div className="mb-1">
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Element ID:</span>
-                <div className="text-sm text-black dark:text-white truncate">
+                <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
                   {jsonData.bim_element_id}
                 </div>
               </div>
@@ -175,7 +198,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
             {jsonData.item_name && (
               <div className="mb-1">
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Item Name:</span>
-                <div className="text-sm text-black dark:text-white">
+                <div className="text-sm text-gray-800 dark:text-gray-200">
                   {jsonData.item_name}
                 </div>
               </div>
@@ -183,7 +206,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
             {jsonData.bim_product_id && (
               <div className="mb-1">
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Product ID:</span>
-                <div className="text-sm text-black dark:text-white">
+                <div className="text-sm text-gray-800 dark:text-gray-200">
                   {jsonData.bim_product_id}
                 </div>
               </div>
@@ -198,14 +221,14 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
               </div>
               
               {isExpanded ? (
-                <div className="border border-gray-300 dark:border-gray-600 rounded-md divide-y divide-gray-300 dark:divide-gray-600">
+                <div className="border border-gray-300 dark:border-gray-600 rounded-md divide-y divide-gray-300 dark:divide-gray-600 bg-white dark:bg-gray-800">
                   {jsonData.parameters.slice(0, isExpanded ? undefined : 5).map((param) => (
-                    <div key={param.id} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600">
+                    <div key={param.id} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
                       <div 
                         className="flex justify-between items-center cursor-pointer"
                         onClick={() => toggleParameter(param.id)}
                       >
-                        <div className="font-medium text-sm">{param.name}</div>
+                        <div className="font-medium text-sm text-gray-800 dark:text-gray-200">{param.name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{param.valueType}</div>
                       </div>
                       
@@ -217,8 +240,8 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
                             </div>
                           )}
                           <div className="text-sm mt-1">
-                            <span className="font-medium">Value: </span>
-                            <span className="font-mono">{formatValue(param.value, param.valueType)}</span>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Value: </span>
+                            <span className="font-mono text-gray-800 dark:text-gray-200">{formatValue(param.value, param.valueType)}</span>
                           </div>
                         </div>
                       )}
@@ -235,19 +258,20 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
         </div>
       )}
       
-      {/* Output Handle */}
+      {/* Input Handle - Keep at the top */}
       <Handle
-        type="source"
-        position={Position.Bottom}
+        type="target"
+        position={Position.Top}
         style={{ 
-          background: '#000', 
+          background: '#6366f1', 
           width: '10px', 
           height: '10px',
-          border: '2px solid #000'
+          border: '2px solid #6366f1',
+          top: '-5px'
         }}
         isConnectable={isConnectable}
       />
-    </div>
+    </BaseNode>
   );
 };
 

@@ -2,6 +2,7 @@
 
 import React, { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import BaseNode, { BaseNodeData } from './BaseNode';
 
 interface Parameter {
   id: string;
@@ -19,8 +20,7 @@ interface JsonData {
   [key: string]: any;
 }
 
-interface JsonDisplayNodeData {
-  label?: string;
+interface JsonDisplayNodeData extends BaseNodeData {
   jsonData?: JsonData;
   selectedParameter?: string;
   onChange?: (paramId: string, newValue: any) => void;
@@ -48,6 +48,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [outputValue, setOutputValue] = useState<any>(null);
   const [outputMode, setOutputMode] = useState<'raw' | 'formatted' | 'withUnits'>(initialOutputMode);
+  const [error, setError] = useState<string>('');
   
   // Helper function to process a value based on the output mode - defined with useCallback before it's used
   const processValueForOutputMode = useCallback((value: any, valueType: string, mode: 'raw' | 'formatted' | 'withUnits'): any => {
@@ -101,14 +102,14 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
         }
         break;
       case 'withUnits':
-        // Format the value with units
+        // Format with units
         if (typeof processedValue === 'number') {
           switch (valueType && valueType.toLowerCase()) {
             case 'length':
-              finalValue = `${processedValue.toFixed(2)} m`;
+              finalValue = `${processedValue.toFixed(2)} mm`;
               break;
             case 'angle':
-              finalValue = `${processedValue.toFixed(4)} rad`;
+              finalValue = `${processedValue.toFixed(4)}°`;
               break;
             case 'real number':
               finalValue = processedValue.toFixed(2);
@@ -122,58 +123,62 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
         }
         break;
       default:
-        finalValue = processedValue;
+        finalValue = value;
     }
     
-    console.log('Processed value for output mode:', mode, 'Value:', finalValue, 'Type:', typeof finalValue);
     return finalValue;
   }, []);
   
-  // Process and update the output value based on the selected mode - defined with useCallback before it's used
+  // Helper function to format values for display
+  const formatValue = useCallback((value: any, valueType: string): string => {
+    if (value === undefined || value === null) return 'N/A';
+    
+    switch (valueType.toLowerCase()) {
+      case 'length':
+        return typeof value === 'number' ? `${value.toFixed(2)} mm` : value.toString();
+      case 'angle':
+        return typeof value === 'number' ? `${value.toFixed(4)}°` : value.toString();
+      case 'boolean':
+        return value === true || value === 'Yes' ? 'Yes' : 'No';
+      case 'real number':
+        return typeof value === 'number' ? value.toFixed(2) : value.toString();
+      default:
+        return value.toString();
+    }
+  }, []);
+  
+  // Update output value based on selected parameter and output mode
   const updateOutputValue = useCallback((value: any, valueType: string) => {
     if (value === undefined || valueType === undefined) {
-      console.log('Warning: Attempting to update with undefined value or type');
+      console.log('Warning: Attempting to update output value with undefined value or valueType');
       return;
     }
     
-    const finalValue = processValueForOutputMode(value, valueType, outputMode);
-    console.log('Output value updated:', finalValue, 'Type:', typeof finalValue, 'Mode:', outputMode, 'ValueType:', valueType);
-    setOutputValue(finalValue);
+    const processedValue = processValueForOutputMode(value, valueType, outputMode);
+    console.log('Updating output value:', value, 'Processed:', processedValue, 'Mode:', outputMode);
+    setOutputValue(processedValue);
   }, [outputMode, processValueForOutputMode]);
   
-  // Update local state when jsonData changes from props
+  // Update local JSON data when props change
   useEffect(() => {
     if (jsonData) {
       setLocalJsonData(jsonData);
-    }
-  }, [jsonData]);
-  
-  // Update getEdgesRef when reactFlowInstance changes
-  useEffect(() => {
-    getEdgesRef.current = reactFlowInstance.getEdges;
-  }, [reactFlowInstance]);
-  
-  // Handle disconnections and reset data when needed
-  useEffect(() => {
-    if (!id) return;
-    
-    // Get the current edges using the ref
-    const currentEdges = getEdgesRef.current();
-    console.log('Checking connections for JsonDisplayNode:', id, 'Edges:', currentEdges.length);
-    
-    // Check if there are any edges connected to this node
-    const hasIncomingConnections = currentEdges.some(edge => edge.target === id);
-    
-    // If no connections and we have data, reset it
-    if (!hasIncomingConnections && localJsonData) {
-      console.log('No incoming connections, resetting JSON Display node data');
-      setLocalJsonData(null);
-      setSelectedParamId(null);
-      setOutputValue(0);
-      setFilterTerm('');
-      setEditedValues({});
       
-      // Update the node data
+      // If a parameter is already selected, update the output value
+      if (selectedParamId) {
+        const param = jsonData.parameters?.find(p => p.id === selectedParamId);
+        if (param) {
+          const currentValue = editedValues[selectedParamId] !== undefined ? editedValues[selectedParamId] : param.value;
+          updateOutputValue(currentValue, param.valueType);
+        }
+      }
+    }
+  }, [jsonData, selectedParamId, editedValues, updateOutputValue]);
+  
+  // Update node data when output value changes
+  useEffect(() => {
+    if (id && outputValue !== null) {
+      console.log('Setting node data with output value:', outputValue);
       setNodes(nds => 
         nds.map(node => {
           if (node.id === id) {
@@ -181,122 +186,10 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
               ...node,
               data: {
                 ...node.data,
-                jsonData: null,
-                outputValue: 0
+                outputValue,
+                outputMode
               }
             };
-          }
-          return node;
-        })
-      );
-    }
-  }, [id, localJsonData, setNodes]);
-  
-  // Update selected parameter when it changes from props
-  useEffect(() => {
-    if (selectedParameter) {
-      setSelectedParamId(selectedParameter);
-    }
-  }, [selectedParameter]);
-  
-  // Get the currently selected parameter
-  const selectedParam = useMemo(() => {
-    if (!localJsonData?.parameters || !selectedParamId) return null;
-    return localJsonData.parameters.find(p => p.id === selectedParamId) || null;
-  }, [localJsonData, selectedParamId]);
-  
-  // Update the node's data when outputMode changes
-  useEffect(() => {
-    if (id) {
-      console.log('Output mode changed to:', outputMode);
-      setNodes((nds) => 
-        nds.map((node) => {
-          if (node.id === id) {
-            if (node.data.outputMode !== outputMode) {
-              console.log('Updating node output mode:', node.id, outputMode);
-              
-              // If we have a selected parameter, immediately update the output value with the new mode
-              if (selectedParam) {
-                const currentValue = editedValues[selectedParam.id] !== undefined 
-                  ? editedValues[selectedParam.id] 
-                  : selectedParam.value;
-                
-                // Process the value based on the new output mode
-                const updatedValue = processValueForOutputMode(currentValue, selectedParam.valueType, outputMode);
-                
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    outputMode: outputMode,
-                    outputValue: updatedValue
-                  }
-                };
-              }
-              
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  outputMode: outputMode
-                }
-              };
-            }
-          }
-          return node;
-        })
-      );
-      
-      // If we have a selected parameter, update the output value with the new mode
-      if (selectedParam) {
-        const currentValue = editedValues[selectedParam.id] !== undefined 
-          ? editedValues[selectedParam.id] 
-          : selectedParam.value;
-        
-        updateOutputValue(currentValue, selectedParam.valueType);
-      }
-    }
-  }, [outputMode, id, setNodes, selectedParam, editedValues, processValueForOutputMode, updateOutputValue]);
-  
-  // Update the node's data when outputValue changes
-  useEffect(() => {
-    // Update the node's data directly with the current outputValue
-    if (id && outputValue !== null) {
-      console.log('Updating node data with outputValue:', outputValue, 'Type:', typeof outputValue);
-      
-      // Ensure numeric values are preserved as numbers, but don't convert strings that should remain strings
-      let finalValue = outputValue;
-      
-      // Only try to convert strings to numbers if they look like numbers and we're in raw mode
-      if (typeof outputValue === 'string' && outputMode === 'raw') {
-        // Check if this string is meant to be a number (doesn't contain non-numeric chars except . and -)
-        const looksLikeNumber = /^-?\d*\.?\d*$/.test(outputValue.trim());
-        if (looksLikeNumber) {
-          const parsed = parseFloat(outputValue);
-          if (!isNaN(parsed)) {
-            finalValue = parsed;
-            console.log('Converted string to number:', outputValue, '->', finalValue);
-          }
-        } else {
-          // This is a string that should remain a string
-          console.log('Preserving string value:', outputValue);
-        }
-      }
-      
-      setNodes((nds) => 
-        nds.map((node) => {
-          if (node.id === id) {
-            // Only update if the value has actually changed
-            if (node.data.outputValue !== finalValue) {
-              console.log('Found node to update:', node.id, 'with value:', finalValue, 'Type:', typeof finalValue);
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  outputValue: finalValue
-                }
-              };
-            }
           }
           return node;
         })
@@ -400,242 +293,135 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       ? editedValues[param.id] 
       : param.value;
     
-    // Determine which control to render based on valueType and name
     switch (param.valueType.toLowerCase()) {
       case 'boolean':
         return (
           <select
-            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            value={currentValue === true ? 'Yes' : 'No'}
+            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white nodrag"
+            value={currentValue === true || currentValue === 'Yes' ? 'Yes' : 'No'}
             onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
           >
             <option value="Yes">Yes</option>
             <option value="No">No</option>
           </select>
         );
-      
-      case 'string':
-        // Special handling for specific string parameters
-        if (param.name === 'strOrientation' || param.name === 'dirCutB') {
-          return (
-            <select
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            >
-              <option value="Floor">Floor</option>
-              <option value="Wall">Wall</option>
-              <option value="Roof">Roof</option>
-              <option value="Ceiling">Ceiling</option>
-              <option value="Left">Left</option>
-              <option value="Right">Right</option>
-            </select>
-          );
-        } else if (param.name === 'strConfiguration') {
-          return (
-            <select
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            >
-              <option value="Open Cassette">Open Cassette</option>
-              <option value="Closed Cassette">Closed Cassette</option>
-              <option value="Standard">Standard</option>
-            </select>
-          );
-        } else if (param.name === 'dirJoists') {
-          return (
-            <select
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            >
-              <option value="Vertical">Vertical</option>
-              <option value="Horizontal">Horizontal</option>
-            </select>
-          );
-        } else {
-          // Default string input
-          return (
-            <input
-              type="text"
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            />
-          );
-        }
-      
       case 'integer':
-        return (
-          <div className="flex items-center">
-            <input
-              type="number"
-              step="1"
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            />
-          </div>
-        );
-      
       case 'real number':
-        return (
-          <div className="flex items-center">
-            <input
-              type="number"
-              step="0.01"
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            />
-          </div>
-        );
-      
       case 'length':
-        return (
-          <div className="flex items-center">
-            <input
-              type="number"
-              step="0.01"
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            />
-            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">m</span>
-          </div>
-        );
-      
       case 'angle':
         return (
-          <div className="flex items-center">
-            <input
-              type="number"
-              step="0.01"
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={currentValue}
-              onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
-            />
-            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">rad</span>
-          </div>
+          <input
+            type="number"
+            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white nodrag"
+            value={currentValue}
+            onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
+            step={param.valueType.toLowerCase() === 'integer' ? 1 : 0.01}
+          />
         );
-      
       default:
-        // Default fallback for any other type
         return (
           <input
             type="text"
-            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            value={String(currentValue)}
+            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white nodrag"
+            value={currentValue}
             onChange={(e) => handleValueChange(param.id, e.target.value, param.valueType)}
           />
         );
     }
   };
   
-  // Format value for display
-  const formatValue = (value: any, type: string): string => {
-    if (value === null || value === undefined) return 'null';
-    
-    switch (type.toLowerCase()) {
-      case 'length':
-      case 'real number':
-        return typeof value === 'number' 
-          ? value.toFixed(2) + (type.toLowerCase() === 'length' ? ' m' : '') 
-          : String(value);
-      case 'angle':
-        return typeof value === 'number' 
-          ? `${(value * (180/Math.PI)).toFixed(1)}° (${value.toFixed(4)} rad)` 
-          : String(value);
-      case 'boolean':
-        return value ? 'Yes' : 'No';
-      default:
-        return String(value);
-    }
-  };
-
+  // Find the selected parameter
+  const selectedParam = localJsonData?.parameters?.find(p => p.id === selectedParamId);
+  
   return (
-    <div className={`p-4 rounded-md border-2 border-black bg-white dark:bg-gray-800 shadow-md ${isCollapsed ? 'w-[280px]' : 'w-[350px]'}`}>
-      {/* Title with Collapse Toggle */}
-      <div className="mb-3 flex justify-between items-center">
-        <div className="text-lg font-bold text-black dark:text-white">
-          {selectedParam ? (selectedParam.description || selectedParam.name) : label}
-        </div>
-        {localJsonData && (
-          <button 
-            onClick={toggleCollapse}
-            className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
-          >
-            {isCollapsed ? 'Expand' : 'Collapse'}
-          </button>
-        )}
+    <BaseNode<JsonDisplayNodeData>
+      data={{
+        ...data,
+        label: label || 'JSON Display'
+      }}
+      isConnectable={isConnectable}
+      error={error}
+      handles={{
+        inputs: [
+          { 
+            id: 'input', 
+            position: 50, 
+            style: { 
+              background: '#6366f1',
+              border: '2px solid #6366f1',
+              width: '10px',
+              height: '10px'
+            } 
+          }
+        ],
+        outputs: [
+          { 
+            id: 'output', 
+            position: 50,
+            style: { 
+              background: '#f59e0b',
+              border: '2px solid #f59e0b',
+              width: '10px',
+              height: '10px'
+            }
+          }
+        ]
+      }}
+    >
+      {/* Collapse/Expand Toggle */}
+      <div className="mb-3 flex justify-end">
+        <button 
+          onClick={toggleCollapse}
+          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
+        >
+          {isCollapsed ? 'Expand' : 'Collapse'}
+        </button>
       </div>
       
-      {/* Basic Info - Always show in collapsed mode */}
-      {localJsonData && isCollapsed && (
-        <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600">
-          {/* Element Info - Only show if no parameter is selected */}
-          {!selectedParam && (
+      {/* Collapsed View */}
+      {isCollapsed ? (
+        <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+          {/* Selected Parameter Display */}
+          {selectedParam ? (
             <>
-              {localJsonData.bim_element_id && (
-                <div className="mb-1">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Element ID:</span>
-                  <div className="text-sm text-black dark:text-white truncate">
-                    {localJsonData.bim_element_id}
-                  </div>
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {selectedParam.name}
                 </div>
-              )}
-              {localJsonData.item_name && (
-                <div className="mb-1">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Item Name:</span>
-                  <div className="text-sm text-black dark:text-white">
-                    {localJsonData.item_name}
-                  </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {selectedParam.valueType}
                 </div>
-              )}
-              {localJsonData.bim_product_id && (
-                <div className="mb-1">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Product ID:</span>
-                  <div className="text-sm text-black dark:text-white">
-                    {localJsonData.bim_product_id}
-                  </div>
-                </div>
-              )}
+              </div>
+              
+              {/* Output Value Display */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Output:</span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                  {outputMode === 'withUnits' 
+                    ? formatValue(
+                        editedValues[selectedParam.id] !== undefined 
+                          ? editedValues[selectedParam.id] 
+                          : selectedParam.value, 
+                        selectedParam.valueType
+                      )
+                    : outputMode === 'formatted'
+                      ? (typeof outputValue === 'number' ? outputValue.toFixed(2) : outputValue)
+                      : outputValue
+                  }
+                </span>
+              </div>
             </>
-          )}
-          
-          {/* Selected Parameter Info - Simplified display */}
-          {selectedParam && (
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-700 dark:text-gray-300">
-                {selectedParam.valueType}
-              </div>
-              <div className="text-lg font-mono font-bold">
-                {outputMode === 'withUnits' 
-                  ? formatValue(
-                      editedValues[selectedParam.id] !== undefined 
-                        ? editedValues[selectedParam.id] 
-                        : selectedParam.value, 
-                      selectedParam.valueType
-                    )
-                  : outputMode === 'formatted'
-                    ? (typeof outputValue === 'number' ? outputValue.toFixed(2) : outputValue)
-                    : outputValue
-                }
-              </div>
+          ) : (
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              No parameter selected
             </div>
           )}
-          
-          {/* Output Mode Selection is hidden in collapsed mode */}
         </div>
-      )}
-      
-      {/* Expanded View */}
-      {!isCollapsed && (
+      ) : (
         <>
           {/* Basic Info */}
           {localJsonData && (
-            <div className="mb-3 bg-gray-100 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600">
+            <div className="mb-3 bg-gray-50 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600">
               {localJsonData.bim_element_id && (
                 <div className="mb-1">
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Element ID:</span>
@@ -671,14 +457,14 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
                 <input
                   type="text"
                   placeholder="Filter parameters..."
-                  className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white nodrag"
                   value={filterTerm}
                   onChange={(e) => setFilterTerm(e.target.value)}
                 />
               </div>
               
               {/* Parameter List */}
-              <div className="mb-3 max-h-[150px] overflow-y-auto border rounded nodrag hover:overflow-scroll">
+              <div className="mb-3 max-h-[150px] overflow-y-auto border rounded nodrag hover:overflow-scroll bg-white dark:bg-gray-800">
                 {filteredParameters.map((param) => (
                   <div 
                     key={param.id}
@@ -688,7 +474,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
                     onClick={() => handleSelectParameter(param.id)}
                   >
                     <div className="flex justify-between">
-                      <div className="font-medium text-sm">{param.name}</div>
+                      <div className="font-medium text-sm text-gray-800 dark:text-gray-200">{param.name}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{param.valueType}</div>
                     </div>
                     {param.description && (
@@ -702,9 +488,9 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
               
               {/* Selected Parameter Editor */}
               {selectedParam && (
-                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600">
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600">
                   <div className="mb-2">
-                    <div className="font-medium">{selectedParam.name}</div>
+                    <div className="font-medium text-gray-800 dark:text-gray-200">{selectedParam.name}</div>
                     {selectedParam.description && (
                       <div className="text-xs text-gray-600 dark:text-gray-400">
                         {selectedParam.description}
@@ -717,7 +503,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
                     {/* Current Value */}
                     <div className="mb-2">
                       <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Current Value:</div>
-                      <div className="text-sm font-mono">
+                      <div className="text-sm font-mono text-gray-800 dark:text-gray-200">
                         {formatValue(selectedParam.value, selectedParam.valueType)}
                       </div>
                     </div>
@@ -778,33 +564,7 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
           )}
         </>
       )}
-      
-      {/* Input Handle */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ 
-          background: '#000', 
-          width: '10px', 
-          height: '10px',
-          border: '2px solid #000'
-        }}
-        isConnectable={isConnectable}
-      />
-      
-      {/* Output Handle */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ 
-          background: '#000', 
-          width: '10px', 
-          height: '10px',
-          border: '2px solid #000'
-        }}
-        isConnectable={isConnectable}
-      />
-    </div>
+    </BaseNode>
   );
 };
 

@@ -304,7 +304,10 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
 
   return (
     <BaseNode<CalculationNodeData>
-      data={data}
+      data={{
+        ...data,
+        label: displayName // Pass the displayName as the label to BaseNode
+      }}
       isConnectable={isConnectable}
       error={error}
       handles={{
@@ -344,11 +347,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
         ]
       }}
     >
-      {/* Title with Expand/Collapse Toggle */}
-      <div className="mb-3 flex justify-between items-center">
-        <div className="text-lg font-bold text-black dark:text-white">
-          {displayName}
-        </div>
+      {/* Remove the duplicate title and keep only the Expand/Collapse Toggle */}
+      <div className="mb-3 flex justify-end items-center">
         <button 
           onClick={toggleExpanded}
           className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
@@ -367,7 +367,28 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
             type="text"
             className="w-full p-2 border rounded bg-white dark:bg-gray-700 nodrag"
             value={customName}
-            onChange={(e) => setCustomName(e.target.value)}
+            onChange={(e) => {
+              const newName = e.target.value;
+              setCustomName(newName);
+              
+              // Update node data immediately when custom name changes
+              if (id) {
+                setNodes(nds => 
+                  nds.map(node => {
+                    if (node.id === id) {
+                      return {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          customName: newName
+                        }
+                      };
+                    }
+                    return node;
+                  })
+                );
+              }
+            }}
             placeholder="Enter a custom name"
           />
         </div>

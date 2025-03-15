@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow, NodeProps } from '@xyflow/react';
+import BaseNode, { BaseNodeData } from './BaseNode';
 
-interface NumberInputNodeData {
-  label?: string;
+interface NumberInputNodeData extends BaseNodeData {
   value?: number;
   min?: number;
   max?: number;
@@ -23,6 +23,7 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
   // Local state for the input value
   const [value, setValue] = useState<number>(data.value !== undefined ? data.value : 0);
   const { setNodes } = useReactFlow();
+  const [error, setError] = useState<string>('');
   
   // Update the node data when the value changes
   const updateNodeData = (newValue: number) => {
@@ -34,7 +35,8 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
             ...node,
             data: {
               ...node.data,
-              value: newValue
+              value: newValue,
+              outputValue: newValue
             }
           };
         }
@@ -46,6 +48,11 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
   // Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value);
+    if (isNaN(newValue)) {
+      setError('Please enter a valid number');
+      return;
+    }
+    setError('');
     updateNodeData(newValue);
   };
   
@@ -68,12 +75,31 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
   }, [data.value]);
   
   return (
-    <div className="p-4 rounded-md border-2 border-black bg-white dark:bg-gray-800 shadow-md w-[220px] font-mono dark:border-gray-600">
-      <div className="mb-3 text-lg font-bold text-black dark:text-white">{label}</div>
-      
+    <BaseNode<NumberInputNodeData>
+      data={{
+        ...data,
+        label: label
+      }}
+      isConnectable={true}
+      error={error}
+      handles={{
+        outputs: [
+          { 
+            id: 'output', 
+            position: 50,
+            style: { 
+              background: '#f59e0b',
+              border: '2px solid #f59e0b',
+              width: '10px',
+              height: '10px'
+            }
+          }
+        ]
+      }}
+    >
       <div className="flex items-center">
         <button 
-          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-l-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-black dark:text-white font-bold"
+          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-l-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-bold"
           onClick={handleDecrement}
         >
           -
@@ -86,11 +112,11 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
           min={min}
           max={max}
           step={step}
-          className="w-full h-8 px-2 text-center border-y border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-gray-400 dark:bg-gray-700 dark:text-white nodrag"
+          className="w-full h-8 px-2 text-center border-y border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
         />
         
         <button 
-          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-black dark:text-white font-bold"
+          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-bold"
           onClick={handleIncrement}
         >
           +
@@ -101,30 +127,29 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
         )}
       </div>
       
+      {/* Display current value */}
+      <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600 dark:text-gray-400">Value:</span>
+          <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+            {value}{unit && <span className="ml-1 text-xs">{unit}</span>}
+          </span>
+        </div>
+      </div>
+      
+      {/* Input Handle */}
       <Handle
         type="target"
         position={Position.Top}
         style={{ 
-          background: '#6366f1', // Indigo color
+          background: '#6366f1',
           width: '10px', 
           height: '10px',
           border: '2px solid #6366f1'
         }}
         className="connectionindicator"
       />
-      
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ 
-          background: '#f59e0b', // Amber color
-          width: '10px', 
-          height: '10px',
-          border: '2px solid #f59e0b'
-        }}
-        className="connectionindicator"
-      />
-    </div>
+    </BaseNode>
   );
 };
 
