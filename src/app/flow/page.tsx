@@ -36,7 +36,6 @@ import {
 import ButtonEdge from '@/components/ButtonEdge';
 import AnimatedEdge from '@/components/AnimatedEdge';
 import StyledEdge from '@/components/StyledEdge';
-import NodeSelector from '@/components/NodeSelector';
 import Toast from '@/components/Toast';
 import HelpPanel from '@/components/HelpPanel';
 import NumberInputNode from '@/components/NumberInputNode';
@@ -1770,6 +1769,8 @@ function Flow() {
         onDoubleClick={handleDoubleClick}
         deleteKeyCode="Delete"
         fitView
+        snapToGrid={true}
+        snapGrid={[20, 20]}
         zoomOnDoubleClick={false}
         zoomOnScroll={true}
         panOnScroll={false}
@@ -1790,27 +1791,14 @@ function Flow() {
           }
         }}
       >
-        <Background />
+        <Background 
+          color="#aaa" 
+          gap={20} 
+          size={1} 
+          variant="dots" 
+        />
         <Controls />
         <MiniMap />
-        <Panel position="top-right">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => handleAction('undo')}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-              disabled={historyIndex <= 0}
-            >
-              Undo
-            </button>
-            <button
-              onClick={() => handleAction('redo')}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-              disabled={historyIndex >= history.length - 1}
-            >
-              Redo
-            </button>
-          </div>
-        </Panel>
         <KeyboardShortcuts onShortcut={handleAction} />
         <SelectionTracker onSelectionChange={handleSelectionChange} />
         
@@ -1834,11 +1822,10 @@ function Flow() {
       </ReactFlow>
       
       {/* UI Components */}
-      <NodeSelector className="absolute top-4 left-4 z-10" />
       <FlowToolbar className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10" onAction={handleAction} />
       <HelpPanel className="absolute top-4 right-4 z-10" />
       <SavePanel 
-        className="absolute bottom-4 right-4 z-10" 
+        className="absolute top-4 left-4 z-10" 
         onSave={handleSaveFlow} 
         onLoad={handleLoadFlow} 
         onLoadDefault={loadDefaultFlow}
