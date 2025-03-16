@@ -450,7 +450,7 @@ const CalculationNode = (props: NodeProps) => {
           width: '10px',
           height: '10px',
           border: '2px solid #6366f1',
-          top: '25%'
+          top: '50%'
         }}
         isConnectable={isConnectable}
       />
@@ -479,7 +479,7 @@ const CalculationNode = (props: NodeProps) => {
           width: '10px',
           height: '10px',
           border: error ? '2px solid #ef4444' : '2px solid #f59e0b',
-          top: '25%'
+          top: '50%'
         }}
         isConnectable={isConnectable}
       />

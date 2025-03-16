@@ -683,6 +683,10 @@ function Flow() {
   // Custom connection handler to create edges with the selected type
   const onConnect = useCallback(
     (params: Connection) => {
+      // Variables to track if nodes should be updated
+      let shouldUpdate = false;
+      let updated = false;
+      
       // Create a new edge with the current edge type and styling
       const newEdge = {
         ...params,
@@ -942,7 +946,7 @@ function Flow() {
                 }
                 
                 // Force to number type and round to avoid floating point issues
-                calcValue = Number(parseFloat(calcValue.toString()).toFixed(4));
+                calcValue = Number(parseFloat((calcValue || 0).toString()).toFixed(4));
                 console.log(`Setting calculation ${isFirstInput ? 'input1' : 'input2'} to:`, calcValue);
                 
                 if (isFirstInput) {
@@ -1031,7 +1035,7 @@ function Flow() {
                 }
                 
                 // Force to number type and round to avoid floating point issues
-                calcValue = Number(parseFloat(calcValue.toString()).toFixed(4));
+                calcValue = Number(parseFloat((calcValue || 0).toString()).toFixed(4));
                 console.log(`Setting calculation ${isFirstInput ? 'input1' : 'input2'} to:`, calcValue);
                 
                 if (isFirstInput) {

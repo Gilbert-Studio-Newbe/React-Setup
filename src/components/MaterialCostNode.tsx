@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { NodeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
+import { NodeProps, useReactFlow, useNodes, useEdges, useUpdateNodeInternals } from '@xyflow/react';
 import BaseNode, { BaseNodeData } from './BaseNode';
 
 interface MaterialCostNodeData extends BaseNodeData {
@@ -78,6 +78,7 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
   const { setNodes } = useReactFlow();
   const edges = useEdges();
   const nodes = useNodes();
+  const updateNodeInternals = useUpdateNodeInternals();
   
   // Initialize state with default values or data props
   const [inputString, setInputString] = useState<string>(data.inputString || '');
@@ -85,6 +86,7 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
   const [matchingRecords, setMatchingRecords] = useState<any[]>(data.matchingRecords || []);
   const [cost, setCost] = useState<string | number | null>(data.cost || null);
   const [error, setError] = useState<string>(data.error || '');
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   
   // Get input data from connected nodes
   useEffect(() => {
@@ -287,11 +289,89 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
       .join(', ');
   }, [inputString]);
   
+  // Calculate node height based on collapsed state and content
+  const getNodeHeight = useCallback(() => {
+    if (isCollapsed) {
+      return 120; // Compact height when collapsed
+    } else {
+      // Calculate expanded height based on content
+      let baseHeight = 150; // Base height for expanded view
+      
+      // Add height for input information section
+      baseHeight += 100;
+      
+      // Add height for search criteria section
+      baseHeight += 80;
+      
+      // Add height for results section
+      baseHeight += 80;
+      
+      return baseHeight;
+    }
+  }, [isCollapsed]);
+  
+  // Toggle collapse state with node size update
+  const toggleCollapse = () => {
+    const newCollapsedState = !isCollapsed;
+    setIsCollapsed(newCollapsedState);
+    
+    // Save collapsed state to localStorage
+    if (id) {
+      try {
+        localStorage.setItem(`materialCostNode_${id}_isCollapsed`, newCollapsedState.toString());
+        console.log(`Saved collapsed state ${newCollapsedState} for node ${id} to localStorage`);
+      } catch (error) {
+        console.error('Error saving collapsed state to localStorage:', error);
+      }
+    }
+    
+    // Update node internals to reflect size change
+    // Use setTimeout to ensure state has updated before updating node internals
+    setTimeout(() => {
+      if (id) {
+        updateNodeInternals(id);
+      }
+    }, 0);
+  };
+  
+  // Load collapsed state from localStorage on initial render
+  useEffect(() => {
+    if (id) {
+      try {
+        const savedCollapsedState = localStorage.getItem(`materialCostNode_${id}_isCollapsed`);
+        if (savedCollapsedState !== null) {
+          const collapsedState = savedCollapsedState === 'true';
+          console.log(`Loaded collapsed state ${collapsedState} for node ${id} from localStorage`);
+          setIsCollapsed(collapsedState);
+        }
+      } catch (error) {
+        console.error('Error loading collapsed state from localStorage:', error);
+      }
+    }
+  }, [id]);
+  
+  // Update node internals when height changes
+  useEffect(() => {
+    if (id) {
+      // Use setTimeout to ensure the DOM has updated before updating node internals
+      const timeoutId = setTimeout(() => {
+        updateNodeInternals(id);
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [getNodeHeight(), id, updateNodeInternals]);
+  
+  // Calculate current node height
+  const nodeHeight = getNodeHeight();
+  
   return (
     <BaseNode<MaterialCostNodeData>
       data={data}
       isConnectable={isConnectable}
       error={error}
+      // Pass dynamic node size
+      nodeSize={{ width: 280, height: nodeHeight }}
       handles={{
         inputs: [
           { 
@@ -328,50 +408,81 @@ const MaterialCostNode: React.FC<NodeProps<MaterialCostNodeData>> = ({ data = de
           }
         ]
       }}
+      // Add the expand/collapse button to the title area
+      titleExtras={
+        <button 
+          onClick={toggleCollapse}
+          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          {isCollapsed ? 'Expand' : 'Collapse'}
+        </button>
+      }
     >
-      {/* Input Information */}
-      <div className="mb-4 space-y-2">
-        <div className="flex flex-col p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+      {isCollapsed ? (
+        // Collapsed View - Show just the cost
+        <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Material Cost
+            </div>
+          </div>
+          
+          {/* Cost Display */}
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-300">Input String:</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">(Left Input)</span>
-          </div>
-          <div className="font-mono text-sm text-gray-800 dark:text-gray-200 truncate max-w-full">
-            {inputString || 'No input'}
-          </div>
-        </div>
-        
-        <div className="flex flex-col p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-300">CSV Data:</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">(Right Input)</span>
-          </div>
-          <div className="font-mono text-sm text-gray-800 dark:text-gray-200">
-            {csvData.length > 0 ? `${csvData.length} records` : 'No data'}
+            <span className="text-sm text-gray-600 dark:text-gray-400">Cost:</span>
+            <span className="font-mono font-bold text-green-600 dark:text-green-400">
+              {cost !== null ? (typeof cost === 'string' && cost.includes('$') ? cost : `$${cost}`) : '$0.00'}
+            </span>
           </div>
         </div>
-      </div>
-      
-      {/* Search Criteria */}
-      <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Criteria:</div>
-        <div className="text-sm text-gray-800 dark:text-gray-200">
-          {formattedCriteria}
-        </div>
-      </div>
-      
-      {/* Results */}
-      <div className="p-3 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Material Cost:</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {matchingRecords.length > 0 ? `${matchingRecords.length} matches` : 'No matches'}
-          </span>
-        </div>
-        <div className="font-mono text-lg font-bold text-green-600 dark:text-green-400 text-center">
-          {cost !== null ? (typeof cost === 'string' && cost.includes('$') ? cost : `$${cost}`) : '$0.00'}
-        </div>
-      </div>
+      ) : (
+        // Expanded View
+        <>
+          {/* Input Information */}
+          <div className="mb-3 space-y-2">
+            <div className="flex flex-col p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Input String:</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">(Left Input)</span>
+              </div>
+              <div className="font-mono text-sm text-gray-800 dark:text-gray-200 truncate max-w-full">
+                {inputString || 'No input'}
+              </div>
+            </div>
+            
+            <div className="flex flex-col p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-300">CSV Data:</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">(Right Input)</span>
+              </div>
+              <div className="font-mono text-sm text-gray-800 dark:text-gray-200">
+                {csvData.length > 0 ? `${csvData.length} records` : 'No data'}
+              </div>
+            </div>
+          </div>
+          
+          {/* Search Criteria */}
+          <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Criteria:</div>
+            <div className="text-sm text-gray-800 dark:text-gray-200">
+              {formattedCriteria}
+            </div>
+          </div>
+          
+          {/* Results */}
+          <div className="p-3 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Material Cost:</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {matchingRecords.length > 0 ? `${matchingRecords.length} matches` : 'No matches'}
+              </span>
+            </div>
+            <div className="font-mono text-lg font-bold text-green-600 dark:text-green-400 text-center">
+              {cost !== null ? (typeof cost === 'string' && cost.includes('$') ? cost : `$${cost}`) : '$0.00'}
+            </div>
+          </div>
+        </>
+      )}
     </BaseNode>
   );
 };

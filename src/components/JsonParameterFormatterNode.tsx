@@ -33,6 +33,7 @@ interface JsonParameterFormatterNodeData {
   handleNullValues?: 'ignore' | 'skip';
   formattedString?: string;
   outputValue?: string;
+  dimensionOutputValue?: number | null;
   onSelectParameter?: (index: number, paramId: string | null) => void;
   onToggleConvertToMillimeters?: (index: number) => void;
   onUpdateCustomLabel?: (index: number, label: string) => void;
@@ -287,6 +288,21 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
           width: '10px', 
           height: '10px',
           border: '2px solid #f59e0b'
+        }}
+        isConnectable={isConnectable}
+      />
+      
+      {/* Dimension Output Handle */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="dimension"
+        style={{ 
+          background: '#10b981', 
+          width: '10px', 
+          height: '10px',
+          border: '2px solid #10b981',
+          left: '50%'
         }}
         isConnectable={isConnectable}
       />

@@ -37,6 +37,8 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
   const [selectedParameters, setSelectedParameters] = useState<SelectedParameter[]>(
     data?.selectedParameters || []
   );
+  // Add state for dimension output value
+  const [dimensionOutputValue, setDimensionOutputValue] = useState<number | null>(data?.dimensionOutputValue || null);
   // Add state for collapsible parameters
   const [isParametersVisible, setIsParametersVisible] = useState<boolean>(true);
   
@@ -84,6 +86,7 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
   // Format parameters based on template and selected parameters
   const formatParameters = useCallback(() => {
     if (!jsonData || !jsonData.parameters || !selectedParameters || selectedParameters.length === 0) {
+      setDimensionOutputValue(null);
       return 'No parameters selected';
     }
     
@@ -93,6 +96,9 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     
     // Sort selected parameters by order
     const sortedParams = [...selectedParameters].sort((a, b) => a.order - b.order);
+    
+    // Extract numeric dimension value from the first parameter with a numeric value
+    let dimensionValue: number | null = null;
     
     // Format each parameter
     const formattedParts = sortedParams.map(selectedParam => {
@@ -111,6 +117,17 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
       if (selectedParam.convertToMillimeters && param.valueType === 'length' && typeof value === 'number') {
         // Assuming the value is already in mm, but you could add conversion logic here if needed
         value = value;
+      }
+      
+      // Extract numeric dimension value if not already found
+      if (dimensionValue === null && typeof value === 'number') {
+        dimensionValue = value;
+      } else if (dimensionValue === null && typeof value === 'string') {
+        // Try to extract numeric value from string
+        const match = value.match(/[-+]?[0-9]*\.?[0-9]+/);
+        if (match) {
+          dimensionValue = parseFloat(match[0]);
+        }
       }
       
       // Format the value based on type
@@ -132,6 +149,9 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
         .replace('{type}', param.valueType || 'unknown');
     }).filter(Boolean); // Remove null entries
     
+    // Update dimension output value
+    setDimensionOutputValue(dimensionValue);
+    
     // Join the formatted parts
     let result = formattedParts.join(' ');
     
@@ -141,7 +161,7 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     }
     
     return result || 'No output generated';
-  }, [jsonData, selectedParameters, data?.formatTemplate, data?.trimWhitespace, data?.handleNullValues]);
+  }, [jsonData, selectedParameters, data?.formatTemplate, data?.trimWhitespace, data?.handleNullValues, setDimensionOutputValue]);
   
   // Update node data when selected parameters change
   useEffect(() => {
@@ -186,7 +206,8 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
                 ...node.data,
                 jsonData,
                 formattedString: formatted,
-                outputValue: formatted
+                outputValue: formatted,
+                dimensionOutputValue
               }
             };
           }
@@ -197,7 +218,7 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
       // Update node internals to refresh handles
       updateNodeInternals(id);
     }
-  }, [id, jsonData, formatParameters, setNodes, updateNodeInternals]);
+  }, [id, jsonData, formatParameters, setNodes, updateNodeInternals, dimensionOutputValue]);
   
   // Check for incoming connections and update JSON data
   useEffect(() => {
@@ -235,11 +256,12 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
               jsonData,
               selectedParameters,
               formattedString,
+              dimensionOutputValue,
               onSelectParameter: handleSelectParameter,
               onToggleConvertToMillimeters: handleToggleConvertToMillimeters,
               onUpdateCustomLabel: handleUpdateCustomLabel,
-              isParametersVisible, // Pass the visibility state
-              toggleParametersVisibility // Pass the toggle function
+              isParametersVisible,
+              toggleParametersVisibility
             }
           };
         }
@@ -252,11 +274,12 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     jsonData, 
     selectedParameters, 
     formattedString, 
+    dimensionOutputValue,
     handleSelectParameter, 
     handleToggleConvertToMillimeters, 
     handleUpdateCustomLabel,
-    isParametersVisible, // Add to dependency array
-    toggleParametersVisibility // Add to dependency array
+    isParametersVisible,
+    toggleParametersVisibility
   ]);
   
   // Merge the state into the data
@@ -265,12 +288,13 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     formattedString,
     jsonData,
     selectedParameters,
+    dimensionOutputValue,
     // Add callbacks for the static component to use
     onSelectParameter: handleSelectParameter,
     onToggleConvertToMillimeters: handleToggleConvertToMillimeters,
     onUpdateCustomLabel: handleUpdateCustomLabel,
-    isParametersVisible, // Pass the visibility state
-    toggleParametersVisibility // Pass the toggle function
+    isParametersVisible,
+    toggleParametersVisibility
   };
   
   // Render the static component with enhanced data
