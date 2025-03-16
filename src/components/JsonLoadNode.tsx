@@ -141,6 +141,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
       }}
       isConnectable={isConnectable}
       error={error}
+      nodeSize={{ width: 280, height: 120 }}
       handles={{
         outputs: [
           { 
@@ -161,7 +162,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
       
       {/* Expand/Collapse Toggle */}
       {isLoaded && jsonData && (
-        <div className="mb-3 flex justify-end">
+        <div className="mb-2 flex justify-end">
           <button 
             onClick={toggleExpand}
             className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
@@ -174,7 +175,7 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
       {/* Import Button */}
       <button
         onClick={handleBrowseClick}
-        className="w-full mb-3 px-4 py-2 bg-white hover:bg-gray-50 text-black border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
+        className="w-full mb-2 px-3 py-2 bg-white hover:bg-gray-50 text-black border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 rounded-md shadow transition-all duration-200 text-sm font-medium flex items-center justify-center"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -182,79 +183,28 @@ const JsonLoadNode = ({ id, data, isConnectable }: NodeProps<JsonLoadNodeData>) 
         {isLoaded ? 'Change JSON File' : 'Load JSON File'}
       </button>
       
-      {/* JSON Data Display */}
+      {/* JSON Data Display - More compact */}
       {isLoaded && jsonData && (
-        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md border border-gray-300 dark:border-gray-600 max-h-[300px] overflow-y-auto">
-          {/* Basic Info */}
-          <div className="mb-2">
-            {jsonData.bim_element_id && (
-              <div className="mb-1">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Element ID:</span>
-                <div className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                  {jsonData.bim_element_id}
-                </div>
-              </div>
-            )}
+        <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded-md border border-gray-300 dark:border-gray-600 max-h-[60px] overflow-y-auto text-xs">
+          {/* Basic Info - More compact */}
+          <div className="mb-1">
             {jsonData.item_name && (
-              <div className="mb-1">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Item Name:</span>
-                <div className="text-sm text-gray-800 dark:text-gray-200">
+              <div className="truncate">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Name:</span>
+                <span className="ml-1 text-gray-800 dark:text-gray-200">
                   {jsonData.item_name}
-                </div>
+                </span>
               </div>
             )}
-            {jsonData.bim_product_id && (
-              <div className="mb-1">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Product ID:</span>
-                <div className="text-sm text-gray-800 dark:text-gray-200">
-                  {jsonData.bim_product_id}
-                </div>
+            {jsonData.parameters && (
+              <div className="truncate">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Parameters:</span>
+                <span className="ml-1 text-gray-800 dark:text-gray-200">
+                  {jsonData.parameters.length}
+                </span>
               </div>
             )}
           </div>
-          
-          {/* Parameters */}
-          {jsonData.parameters && jsonData.parameters.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Parameters: {jsonData.parameters.length}
-              </div>
-              
-              {isExpanded ? (
-                <div className="border border-gray-300 dark:border-gray-600 rounded-md divide-y divide-gray-300 dark:divide-gray-600 bg-white dark:bg-gray-800">
-                  {jsonData.parameters.slice(0, isExpanded ? undefined : 5).map((param) => (
-                    <div key={param.id} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <div 
-                        className="flex justify-between items-center cursor-pointer"
-                        onClick={() => toggleParameter(param.id)}
-                      >
-                        <div className="font-medium text-sm text-gray-800 dark:text-gray-200">{param.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{param.valueType}</div>
-                      </div>
-                      
-                      {expandedParameter === param.id && (
-                        <div className="mt-1 pl-2 border-l-2 border-gray-300 dark:border-gray-500">
-                          {param.description && (
-                            <div className="text-xs text-gray-600 dark:text-gray-400">
-                              {param.description}
-                            </div>
-                          )}
-                          <div className="text-sm mt-1">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Value: </span>
-                            <span className="font-mono text-gray-800 dark:text-gray-200">{formatValue(param.value, param.valueType)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {jsonData.parameters.length} parameters available. Click 'Expand' to view.
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
       

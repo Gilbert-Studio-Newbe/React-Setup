@@ -314,10 +314,10 @@ const CalculationNode = (props: NodeProps) => {
   }, [id, result, displayResult, hasDollarSign]);
 
   return (
-    <div className="relative p-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md" style={{ width: '320px' }}>
+    <div className="relative p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md" style={{ minWidth: '280px', width: 'auto', minHeight: '120px' }}>
       {/* Title */}
-      <div className="mb-3 flex justify-between items-center">
-        <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+      <div className="mb-2 flex justify-between items-center">
+        <div className="text-md font-semibold text-gray-800 dark:text-gray-200">
           {displayName}
         </div>
         <button 
@@ -391,10 +391,10 @@ const CalculationNode = (props: NodeProps) => {
       </div>
 
       {/* Input Values Display */}
-      <div className="mb-4 space-y-2">
-        <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
-          <span className="text-sm text-gray-600 dark:text-gray-300">Input 1:</span>
-          <span className="font-mono text-gray-800 dark:text-gray-200">
+      <div className="mb-2 space-y-1">
+        <div className="flex justify-between items-center p-1 bg-gray-50 dark:bg-gray-700 rounded-md">
+          <span className="text-xs text-gray-600 dark:text-gray-300">Input 1:</span>
+          <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
             {hasDollarSign ? `$${input1.toFixed(2)}` : input1}
           </span>
         </div>
@@ -402,19 +402,19 @@ const CalculationNode = (props: NodeProps) => {
 
       {/* Result Display */}
       <div className={`
-        p-3 rounded-md mb-4
+        p-2 rounded-md mb-2
         ${error ? 'bg-red-50 dark:bg-red-900/30' : 'bg-blue-50 dark:bg-blue-900/30'} 
         border 
         ${error ? 'border-red-200 dark:border-red-800' : 'border-blue-200 dark:border-blue-800'}
       `}>
         <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Result:</span>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Result:</span>
+          <div className="flex items-center space-x-1">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {operationSymbols[operation]}
             </span>
             <span className={`
-              font-mono font-bold text-lg
+              font-mono font-bold text-sm
               ${error ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}
             `}>
               {displayResult}
@@ -424,10 +424,10 @@ const CalculationNode = (props: NodeProps) => {
       </div>
       
       {/* Input 2 Display - Moved to bottom */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
-          <span className="text-sm text-gray-600 dark:text-gray-300">Input 2:</span>
-          <span className="font-mono text-gray-800 dark:text-gray-200">
+      <div className="space-y-1">
+        <div className="flex justify-between items-center p-1 bg-gray-50 dark:bg-gray-700 rounded-md">
+          <span className="text-xs text-gray-600 dark:text-gray-300">Input 2:</span>
+          <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
             {hasDollarSign ? `$${input2.toFixed(2)}` : input2}
           </span>
         </div>
@@ -435,8 +435,8 @@ const CalculationNode = (props: NodeProps) => {
       
       {/* Error Display */}
       {error && (
-        <div className="mt-2 p-2 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="mt-1 p-1 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
       

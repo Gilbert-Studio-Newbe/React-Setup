@@ -70,11 +70,11 @@ const ParameterSelector = ({
       );
   
   return (
-    <div className="max-h-[300px] overflow-y-auto scrollbar scrollbar-w-2 scrollbar-thumb-rounded-md scrollbar-thumb-gray-400 scrollbar-track-transparent dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500 dark:hover:scrollbar-thumb-gray-500">
+    <div className="max-h-[200px] overflow-y-auto scrollbar scrollbar-w-2 scrollbar-thumb-rounded-md scrollbar-thumb-gray-400 scrollbar-track-transparent dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500 dark:hover:scrollbar-thumb-gray-500">
       {selectedParameters.map((param, index) => (
-        <div key={index} className="mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">
+        <div key={index} className="mb-2 border-b border-gray-200 dark:border-gray-600 pb-1">
           <div className="flex items-center justify-between mb-1">
-            <div className="font-medium text-sm text-gray-700 dark:text-gray-300">
+            <div className="font-medium text-xs text-gray-700 dark:text-gray-300">
               Parameter {index + 1}:
             </div>
             
@@ -93,15 +93,15 @@ const ParameterSelector = ({
           </div>
           
           {/* Parameter selection UI */}
-          <div className="mb-2">
+          <div className="mb-1">
             {activeParameterIndex === index ? (
               <div className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700">
                 {/* Filter input */}
-                <div className="p-2 border-b border-gray-300 dark:border-gray-600">
+                <div className="p-1 border-b border-gray-300 dark:border-gray-600">
                   <input
                     type="text"
                     placeholder="Search parameters..."
-                    className="w-full p-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
+                    className="w-full p-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
                     value={filterTerm}
                     onChange={(e) => setFilterTerm(e.target.value)}
                     autoFocus
@@ -109,12 +109,12 @@ const ParameterSelector = ({
                 </div>
                 
                 {/* Parameter list */}
-                <div className="max-h-[150px] overflow-y-auto">
+                <div className="max-h-[120px] overflow-y-auto">
                   {filteredParameters.length > 0 ? (
                     filteredParameters.map((p) => (
                       <div 
                         key={p.id}
-                        className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                        className="p-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
                         onClick={() => {
                           onSelectParameter?.(index, p.id);
                           setActiveParameterIndex(null);
@@ -122,7 +122,7 @@ const ParameterSelector = ({
                         }}
                       >
                         <div className="flex justify-between">
-                          <div className="font-medium text-sm text-gray-800 dark:text-gray-200">{p.name}</div>
+                          <div className="font-medium text-xs text-gray-800 dark:text-gray-200">{p.name}</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">{p.valueType}</div>
                         </div>
                         {p.description && (
@@ -133,16 +133,16 @@ const ParameterSelector = ({
                       </div>
                     ))
                   ) : (
-                    <div className="p-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <div className="p-1 text-center text-xs text-gray-500 dark:text-gray-400">
                       No parameters match your search
                     </div>
                   )}
                 </div>
                 
                 {/* Close button */}
-                <div className="p-2 border-t border-gray-300 dark:border-gray-600 text-right">
+                <div className="p-1 border-t border-gray-300 dark:border-gray-600 text-right">
                   <button 
-                    className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                    className="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
                     onClick={() => {
                       setActiveParameterIndex(null);
                       setFilterTerm('');
@@ -154,12 +154,12 @@ const ParameterSelector = ({
               </div>
             ) : (
               <div 
-                className="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 cursor-pointer flex justify-between items-center"
+                className="p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 cursor-pointer flex justify-between items-center"
                 onClick={() => setActiveParameterIndex(index)}
               >
                 {param.paramId ? (
                   <>
-                    <div>
+                    <div className="text-xs">
                       {availableParameters.find(p => p.id === param.paramId)?.name || 'Unknown parameter'}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -167,7 +167,7 @@ const ParameterSelector = ({
                     </div>
                   </>
                 ) : (
-                  <div className="text-gray-500 dark:text-gray-400">Select parameter</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Select parameter</div>
                 )}
               </div>
             )}
@@ -181,7 +181,7 @@ const ParameterSelector = ({
                 placeholder="Custom label (optional)"
                 value={param.customLabel || ''}
                 onChange={(e) => onUpdateCustomLabel?.(index, e.target.value)}
-                className="w-full p-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
+                className="w-full p-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
               />
             </div>
           )}
@@ -189,9 +189,9 @@ const ParameterSelector = ({
       ))}
       
       {availableParameters.length === 0 && (
-        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
+        <div className="p-1 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
           <div className="text-xs text-gray-600 dark:text-gray-400">
-            No parameters available. Connect to a JSON source node.
+            No parameters available.
           </div>
         </div>
       )}
@@ -211,10 +211,10 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
   const toggleParametersVisibility = nodeData.toggleParametersVisibility;
   
   return (
-    <div className="relative p-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md" style={{ width: '350px' }}>
+    <div className="relative p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md" style={{ minWidth: '300px', width: 'auto', minHeight: '120px' }}>
       {/* Title with Toggle Button */}
-      <div className="mb-3 flex justify-between items-center">
-        <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+      <div className="mb-2 flex justify-between items-center">
+        <div className="text-md font-semibold text-gray-800 dark:text-gray-200">
           {label}
         </div>
         
@@ -227,14 +227,14 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
       </div>
       
       {/* Output Display */}
-      <div className="mb-4">
+      <div className="mb-2">
         <div className="bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800 overflow-hidden">
-          <div className="px-3 py-2 bg-blue-100 dark:bg-blue-800/50 border-b border-blue-200 dark:border-blue-700 flex justify-between items-center">
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Output</div>
+          <div className="px-2 py-1 bg-blue-100 dark:bg-blue-800/50 border-b border-blue-200 dark:border-blue-700 flex justify-between items-center">
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Output</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">(string)</div>
           </div>
-          <div className="p-3">
-            <div className="font-mono text-sm text-blue-600 dark:text-blue-400 break-all whitespace-pre-wrap">
+          <div className="p-2">
+            <div className="font-mono text-xs text-blue-600 dark:text-blue-400 break-all whitespace-pre-wrap">
               {formattedString}
             </div>
           </div>
@@ -243,16 +243,16 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
       
       {/* Connection Status */}
       {(!jsonData || !jsonData.parameters || jsonData.parameters.length === 0) && (
-        <div className="mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
+        <div className="mb-2 p-1 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
           <div className="text-xs text-yellow-700 dark:text-yellow-400">
-            No JSON data connected. Connect to a JSON source node.
+            No JSON data connected.
           </div>
         </div>
       )}
       
       {/* Parameter Selector - Client-side only and collapsible */}
       {typeof window !== 'undefined' && isParametersVisible && (
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
           <ParameterSelector 
             jsonData={jsonData}
             selectedParameters={selectedParameters}

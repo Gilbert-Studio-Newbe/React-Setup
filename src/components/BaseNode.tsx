@@ -31,6 +31,8 @@ interface BaseNodeProps<T extends BaseNodeData> extends NodeProps<T> {
     width: number;
     height: number;
   };
+  // Add titleExtras prop to allow adding elements to the title area
+  titleExtras?: React.ReactNode;
 }
 
 export const BaseNode = <T extends BaseNodeData>({ 
@@ -42,17 +44,19 @@ export const BaseNode = <T extends BaseNodeData>({
     inputs: [{ id: 'input', position: 50 }],
     outputs: [{ id: 'output', position: 50 }]
   },
-  // Default node size that aligns with the grid (multiple of 40px)
-  nodeSize = { width: 280, height: 200 }
+  // Update default node size to be more compact
+  nodeSize = { width: 280, height: 120 },
+  // Add titleExtras parameter with default value of null
+  titleExtras = null
 }: BaseNodeProps<T>) => {
   return (
     <div 
       className={`
-        relative p-4 rounded-lg border-2 
+        relative p-3 rounded-lg border-2 
         ${error ? 'border-red-400' : 'border-gray-300'} 
         bg-white dark:bg-gray-800 
         shadow-md
-        transition-all duration-200 
+        transition-all duration-300 
         hover:shadow-lg
         ${error ? 'dark:border-red-600' : 'dark:border-gray-600'}
       `}
@@ -60,22 +64,33 @@ export const BaseNode = <T extends BaseNodeData>({
         width: `${nodeSize.width}px`,
         height: `${nodeSize.height}px`,
         boxSizing: 'border-box',
+        transition: 'height 0.3s ease-in-out, width 0.3s ease-in-out',
       }}
     >
-      {/* Title */}
-      <div className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">
-        {data?.label || 'Base'}
+      {/* Title - Updated to include titleExtras */}
+      <div className="mb-2 flex justify-between items-center">
+        <div className="text-md font-semibold text-gray-800 dark:text-gray-200">
+          {data?.label || 'Base'}
+        </div>
+        {titleExtras && (
+          <div className="flex items-center">
+            {titleExtras}
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="overflow-auto" style={{ maxHeight: `${nodeSize.height - 80}px` }}>
+      {/* Content - Adjusted to use available height without fixed max-height */}
+      <div className="overflow-auto" style={{ 
+        height: `${nodeSize.height - 50}px`,
+        transition: 'height 0.3s ease-in-out'
+      }}>
         {children}
       </div>
 
-      {/* Error Display */}
+      {/* Error Display - More compact */}
       {error && (
-        <div className="mt-2 p-2 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="mt-1 p-1 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 

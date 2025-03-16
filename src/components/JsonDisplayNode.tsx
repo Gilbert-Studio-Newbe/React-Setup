@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
 import BaseNode, { BaseNodeData } from './BaseNode';
 
 interface Parameter {
@@ -49,6 +49,9 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
   const [outputValue, setOutputValue] = useState<any>(null);
   const [outputMode, setOutputMode] = useState<'raw' | 'formatted' | 'withUnits'>(initialOutputMode);
   const [error, setError] = useState<string>('');
+  
+  // Add useUpdateNodeInternals hook to update node size in React Flow
+  const updateNodeInternals = useUpdateNodeInternals();
   
   // Helper function to process a value based on the output mode - defined with useCallback before it's used
   const processValueForOutputMode = useCallback((value: any, valueType: string, mode: 'raw' | 'formatted' | 'withUnits'): any => {
@@ -458,7 +461,40 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     }
   }, [id, setNodes]);
   
-  // Toggle collapse state
+  // Calculate node height based on collapsed state and content
+  const getNodeHeight = useCallback(() => {
+    if (isCollapsed) {
+      return 120; // Compact height when collapsed
+    } else {
+      // Calculate expanded height based on content
+      let baseHeight = 150; // Base height for expanded view
+      
+      // Add height for basic info section if present
+      if (localJsonData) {
+        if (localJsonData.bim_element_id || localJsonData.item_name || localJsonData.bim_product_id) {
+          baseHeight += 80;
+        }
+      }
+      
+      // Add height for parameter list
+      if (localJsonData?.parameters && localJsonData.parameters.length > 0) {
+        // Add height for filter and parameter list
+        baseHeight += 200;
+        
+        // Add height for selected parameter editor if a parameter is selected
+        if (selectedParamId) {
+          baseHeight += 150;
+        }
+      }
+      
+      // Add height for output mode selection
+      baseHeight += 70;
+      
+      return baseHeight;
+    }
+  }, [isCollapsed, localJsonData, selectedParamId]);
+  
+  // Toggle collapse state with node size update
   const toggleCollapse = () => {
     const newCollapsedState = !isCollapsed;
     setIsCollapsed(newCollapsedState);
@@ -472,6 +508,14 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
         console.error('Error saving collapsed state to localStorage:', error);
       }
     }
+    
+    // Update node internals to reflect size change
+    // Use setTimeout to ensure state has updated before updating node internals
+    setTimeout(() => {
+      if (id) {
+        updateNodeInternals(id);
+      }
+    }, 0);
   };
   
   // Load collapsed state from localStorage on initial render
@@ -542,6 +586,21 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
     ? (selectedParam.description || selectedParam.name) 
     : (label || 'JSON Display');
   
+  // Calculate current node height
+  const nodeHeight = getNodeHeight();
+  
+  // Update node internals when height changes
+  useEffect(() => {
+    if (id) {
+      // Use setTimeout to ensure the DOM has updated before updating node internals
+      const timeoutId = setTimeout(() => {
+        updateNodeInternals(id);
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [nodeHeight, id, updateNodeInternals]);
+  
   return (
     <BaseNode<JsonDisplayNodeData>
       data={{
@@ -550,6 +609,8 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
       }}
       isConnectable={isConnectable}
       error={error}
+      // Pass dynamic node size
+      nodeSize={{ width: 280, height: nodeHeight }}
       handles={{
         inputs: [
           { 
@@ -576,17 +637,16 @@ const JsonDisplayNode = ({ data, isConnectable, id }: NodeProps<JsonDisplayNodeD
           }
         ]
       }}
-    >
-      {/* Collapse/Expand Toggle */}
-      <div className="mb-3 flex justify-end">
+      // Add the expand/collapse button to the title area
+      titleExtras={
         <button 
           onClick={toggleCollapse}
-          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
+          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
           {isCollapsed ? 'Expand' : 'Collapse'}
         </button>
-      </div>
-      
+      }
+    >
       {/* Collapsed View */}
       {isCollapsed ? (
         <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
