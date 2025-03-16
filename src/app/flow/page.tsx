@@ -28,7 +28,7 @@ const BasicFlow = dynamic(
           }}></div>
           <p style={{ fontSize: '18px', color: '#333' }}>Loading Flow Editor...</p>
         </div>
-      </div>
+    </div>
     )
   }
 );

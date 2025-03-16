@@ -433,3 +433,199 @@
     - Ensure the application is keyboard navigable
     - Add ARIA attributes for screen readers
     - Improve color contrast for better readability 
+
+## 10. Node Integration Standards
+
+This section defines standards for integrating nodes into the application, ensuring consistency across both new and existing node components. These standards should be followed when creating new nodes or refactoring existing ones.
+
+### 10.1 Node Structure and Naming Conventions
+
+#### 10.1.1 File Organization
+- [ ] Node components should be placed in the `/src/components/nodes` directory
+- [ ] Node components should be named using PascalCase with the suffix `Node` (e.g., `CalculationNode.tsx`)
+- [ ] Each node should have its own directory if it requires additional helper components or styles
+- [ ] Node-specific types should be defined in a separate `types.ts` file within the node's directory
+
+#### 10.1.2 Component Structure
+- [ ] All nodes should extend the `BaseNode` component or implement its interface
+- [ ] Nodes should use React.memo for performance optimization
+- [ ] Nodes should implement proper cleanup in useEffect hooks
+- [ ] Nodes should have clear separation between UI rendering and business logic
+
+### 10.2 Port Standardization
+
+#### 10.2.1 Input Port Naming
+- [ ] Input ports should follow the naming convention: `input_[dataType]_[purpose]`
+  - Example: `input_number_value1`, `input_string_name`, `input_object_parameters`
+- [ ] For nodes with multiple similar inputs, use numeric suffixes (e.g., `input_number_value1`, `input_number_value2`)
+- [ ] Special purpose inputs should use descriptive names (e.g., `input_number_quantity`, `input_number_unitPrice`)
+
+#### 10.2.2 Output Port Naming
+- [ ] Output ports should follow the naming convention: `output_[dataType]_[purpose]`
+  - Example: `output_number_result`, `output_string_formatted`, `output_object_processed`
+- [ ] Nodes with multiple outputs should use descriptive suffixes (e.g., `output_number_sum`, `output_number_average`)
+- [ ] Formatted outputs should include `formatted` in the name (e.g., `output_string_formatted`)
+
+#### 10.2.3 Port Positioning
+- [ ] Input ports should be positioned on the left side of the node
+- [ ] Output ports should be positioned on the right side of the node
+- [ ] Multiple ports should be evenly spaced
+- [ ] Port positions should be consistent across similar node types
+
+#### 10.2.4 Multiple Port Management
+- [ ] Nodes with multiple input ports of the same type should:
+  - Use consistent naming with clear differentiation (e.g., `input_number_operand1`, `input_number_operand2`)
+  - Visually indicate the purpose of each port through labels or icons
+  - Document the expected data format for each port
+  - Maintain consistent positioning across similar node types (e.g., first operand always at the top)
+
+- [ ] Nodes with multiple output ports should:
+  - Clearly differentiate between primary and secondary outputs
+  - Use descriptive names that indicate the relationship between outputs (e.g., `output_number_raw`, `output_string_formatted`)
+  - Document the data format and purpose of each output
+  - Consider color-coding or visual indicators for different output types
+
+- [ ] For complex nodes with many ports:
+  - Group related ports visually (e.g., all numeric inputs together)
+  - Consider collapsible port groups for rarely used ports
+  - Provide clear visual indicators of required vs. optional ports
+  - Implement tooltips or hover information explaining each port's purpose
+
+- [ ] Port limits and guidelines:
+  - Nodes should generally have no more than 5 input ports to maintain usability
+  - If more inputs are required, consider using array/object inputs or creating specialized node variants
+  - Output ports should be limited to those that provide meaningful distinct data
+  - Dynamic ports (user can add/remove) should follow the same naming conventions with added index
+
+### 10.3 Data Type Standards
+
+#### 10.3.1 Supported Data Types
+- [ ] Numeric: Integer and floating-point values
+- [ ] String: Text values, including formatted numbers
+- [ ] Boolean: True/false values
+- [ ] Object: JSON objects or structured data
+- [ ] Array: Lists of values
+- [ ] Special: Domain-specific types (e.g., IFC data, CSV data)
+
+#### 10.3.2 Type Conversion
+- [ ] Nodes should clearly document expected input types
+- [ ] Nodes should handle type conversion gracefully with appropriate error messages
+- [ ] Type conversion should be consistent across similar node types
+- [ ] Nodes should validate input types before processing
+
+#### 10.3.3 Data Formatting
+- [ ] Numeric outputs should maintain both raw and formatted values
+- [ ] Currency values should use consistent formatting (e.g., `$1,234.56`)
+- [ ] Percentage values should include the % symbol (e.g., `42%`)
+- [ ] Date/time values should use ISO format internally with configurable display format
+- [ ] Units should be consistently applied and displayed
+
+### 10.4 Error Handling Standards
+
+#### 10.4.1 Input Validation
+- [ ] Nodes should validate all inputs before processing
+- [ ] Invalid inputs should trigger clear error states
+- [ ] Required inputs should be clearly marked
+- [ ] Validation should include type checking, range checking, and format validation
+
+#### 10.4.2 Error Display
+- [ ] Errors should be displayed within the node using the BaseNode error display
+- [ ] Error messages should be user-friendly and actionable
+- [ ] Critical errors should be visually distinct from warnings
+- [ ] Errors should not crash the application but be contained within the node
+
+### 10.5 Performance Considerations
+
+#### 10.5.1 Calculation Efficiency
+- [ ] Nodes should use memoization for expensive calculations
+- [ ] Nodes should only recalculate when inputs change
+- [ ] Nodes should use efficient algorithms for complex operations
+- [ ] Nodes should handle large datasets gracefully
+
+#### 10.5.2 Render Optimization
+- [ ] Nodes should use React.memo to prevent unnecessary re-renders
+- [ ] Nodes should use useCallback for event handlers
+- [ ] Nodes should minimize state updates during user interactions
+- [ ] Nodes should avoid expensive operations during rendering
+
+### 10.6 Pre-Deployment Checklist
+
+Before integrating a new node or updating an existing one, verify the following:
+
+#### 10.6.1 Structure and Naming
+- [ ] Node follows file organization standards
+- [ ] Node extends BaseNode or implements its interface
+- [ ] Node uses consistent naming conventions
+- [ ] Node is properly exported in the barrel file
+
+#### 10.6.2 Ports and Data Flow
+- [ ] Input ports follow naming conventions
+- [ ] Output ports follow naming conventions
+- [ ] Ports are positioned correctly
+- [ ] Data flow between ports is documented
+
+#### 10.6.3 Data Handling
+- [ ] Node handles all supported data types correctly
+- [ ] Type conversion is implemented consistently
+- [ ] Data formatting follows standards
+- [ ] Node maintains both raw and formatted values where appropriate
+
+#### 10.6.4 Error Handling
+- [ ] Input validation is implemented
+- [ ] Error states are displayed correctly
+- [ ] Required inputs are marked
+- [ ] Edge cases are handled gracefully
+
+#### 10.6.5 Performance
+- [ ] Node uses memoization for expensive calculations
+- [ ] Node prevents unnecessary re-renders
+- [ ] Node handles large datasets efficiently
+- [ ] Node cleans up resources properly
+
+#### 10.6.6 Testing
+- [ ] Node has unit tests for core functionality
+- [ ] Node has integration tests with connected nodes
+- [ ] Edge cases are tested
+- [ ] Performance is benchmarked for complex operations
+
+### 10.7 AI Assistant Integration Guidelines
+
+To ensure the AI assistant consistently follows these standards when building or modifying nodes:
+
+#### 10.7.1 Context Initialization
+- Before starting work on a node, the AI should review:
+  - The Node Integration Standards section of this document
+  - The BaseNode implementation
+  - Similar existing nodes for reference
+  - The specific requirements for the new node
+
+#### 10.7.2 Implementation Process
+1. The AI should first outline the node structure, including:
+   - Input and output ports with standardized names
+   - Data types and conversions
+   - Core functionality
+   - Error handling approach
+
+2. The AI should implement the node following the standards, with particular attention to:
+   - Consistent port naming and positioning
+   - Proper extension of BaseNode
+   - Efficient calculation and rendering
+   - Comprehensive error handling
+
+3. The AI should validate the implementation against the pre-deployment checklist
+
+#### 10.7.3 Documentation Requirements
+- The AI should document:
+  - The purpose and functionality of the node
+  - Expected input types and formats
+  - Output types and formats
+  - Error states and handling
+  - Performance considerations
+  - Usage examples
+
+#### 10.7.4 Review Process
+- After implementation, the AI should review the node against all standards
+- The AI should identify any deviations from standards and explain the rationale
+- The AI should suggest improvements to align with standards where possible
+
+By following these guidelines, the AI assistant can ensure that all nodes it creates or modifies conform to the project's standards and integrate seamlessly with the existing codebase. 
