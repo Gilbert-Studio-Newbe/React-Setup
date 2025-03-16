@@ -55,9 +55,19 @@ const ParameterSelector = ({
   onUpdateCustomLabel?: (index: number, label: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
+  const [filterTerm, setFilterTerm] = useState<string>('');
+  const [activeParameterIndex, setActiveParameterIndex] = useState<number | null>(null);
   
   // Get available parameters from jsonData
   const availableParameters = jsonData?.parameters || [];
+  
+  // Filter parameters based on filter term
+  const filteredParameters = filterTerm.trim() === '' 
+    ? availableParameters 
+    : availableParameters.filter(param => 
+        param.name.toLowerCase().includes(filterTerm.toLowerCase()) || 
+        (param.description && param.description.toLowerCase().includes(filterTerm.toLowerCase()))
+      );
   
   return (
     <div className="max-h-[300px] overflow-y-auto scrollbar scrollbar-w-2 scrollbar-thumb-rounded-md scrollbar-thumb-gray-400 scrollbar-track-transparent dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500 dark:hover:scrollbar-thumb-gray-500">
@@ -82,19 +92,86 @@ const ParameterSelector = ({
             )}
           </div>
           
-          {/* Parameter selector */}
-          <select
-            value={param.paramId || ''}
-            onChange={(e) => onSelectParameter?.(index, e.target.value || null)}
-            className="w-full p-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
-          >
-            <option value="">Select parameter</option>
-            {availableParameters.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.valueType})
-              </option>
-            ))}
-          </select>
+          {/* Parameter selection UI */}
+          <div className="mb-2">
+            {activeParameterIndex === index ? (
+              <div className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700">
+                {/* Filter input */}
+                <div className="p-2 border-b border-gray-300 dark:border-gray-600">
+                  <input
+                    type="text"
+                    placeholder="Search parameters..."
+                    className="w-full p-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
+                    value={filterTerm}
+                    onChange={(e) => setFilterTerm(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Parameter list */}
+                <div className="max-h-[150px] overflow-y-auto">
+                  {filteredParameters.length > 0 ? (
+                    filteredParameters.map((p) => (
+                      <div 
+                        key={p.id}
+                        className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                        onClick={() => {
+                          onSelectParameter?.(index, p.id);
+                          setActiveParameterIndex(null);
+                          setFilterTerm('');
+                        }}
+                      >
+                        <div className="flex justify-between">
+                          <div className="font-medium text-sm text-gray-800 dark:text-gray-200">{p.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{p.valueType}</div>
+                        </div>
+                        {p.description && (
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            {p.description}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                      No parameters match your search
+                    </div>
+                  )}
+                </div>
+                
+                {/* Close button */}
+                <div className="p-2 border-t border-gray-300 dark:border-gray-600 text-right">
+                  <button 
+                    className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                    onClick={() => {
+                      setActiveParameterIndex(null);
+                      setFilterTerm('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 cursor-pointer flex justify-between items-center"
+                onClick={() => setActiveParameterIndex(index)}
+              >
+                {param.paramId ? (
+                  <>
+                    <div>
+                      {availableParameters.find(p => p.id === param.paramId)?.name || 'Unknown parameter'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {availableParameters.find(p => p.id === param.paramId)?.valueType || ''}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-gray-500 dark:text-gray-400">Select parameter</div>
+                )}
+              </div>
+            )}
+          </div>
           
           {/* Custom label input */}
           {param.paramId && (
@@ -149,13 +226,29 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
         </button>
       </div>
       
-      {/* Content */}
-      <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800 mb-4">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Parameter Formatter</div>
-        <div className="font-mono text-sm text-blue-600 dark:text-blue-400 break-all">
-          {formattedString}
+      {/* Output Display */}
+      <div className="mb-4">
+        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-800 overflow-hidden">
+          <div className="px-3 py-2 bg-blue-100 dark:bg-blue-800/50 border-b border-blue-200 dark:border-blue-700 flex justify-between items-center">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Output</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">(string)</div>
+          </div>
+          <div className="p-3">
+            <div className="font-mono text-sm text-blue-600 dark:text-blue-400 break-all whitespace-pre-wrap">
+              {formattedString}
+            </div>
+          </div>
         </div>
       </div>
+      
+      {/* Connection Status */}
+      {(!jsonData || !jsonData.parameters || jsonData.parameters.length === 0) && (
+        <div className="mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
+          <div className="text-xs text-yellow-700 dark:text-yellow-400">
+            No JSON data connected. Connect to a JSON source node.
+          </div>
+        </div>
+      )}
       
       {/* Parameter Selector - Client-side only and collapsible */}
       {typeof window !== 'undefined' && isParametersVisible && (
