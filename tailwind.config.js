@@ -18,11 +18,9 @@ module.exports = {
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'sans-serif'],
+        sans: ['Arial', 'sans-serif'],
       },
     },
   },
-  plugins: [
-    require('tailwind-scrollbar')
-  ],
+  plugins: [],
 }; 
