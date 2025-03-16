@@ -20,46 +20,46 @@ import {
   OnConnect,
 } from '@xyflow/react';
 import dynamic from 'next/dynamic';
-import ClientReactFlowWithProvider from '@/components/ClientOnlyReactFlow';
+import ClientReactFlowWithProvider from '../../components/ClientOnlyReactFlow';
 
 // Import ContextNodeMenu with dynamic import to prevent SSR
 const ContextNodeMenu = dynamic(
-  () => import('@/components/ContextNodeMenu'),
+  () => import('../../components/ContextNodeMenu'),
   { ssr: false }
 );
 
 // Import DynamicJsonParameterFormatterNode with dynamic import
 const DynamicJsonParameterFormatterNode = dynamic(
-  () => import('@/components/DynamicJsonParameterFormatterNode'),
+  () => import('../../components/DynamicJsonParameterFormatterNode'),
   { ssr: false }
 );
 
 import {
   nodes as initialNodes,
   edges as initialEdges,
-} from '@/components/initial-elements';
+} from '../../components/initial-elements';
 // Import only the edge types we'll actually use
-import ButtonEdge from '@/components/ButtonEdge';
-import AnimatedEdge from '@/components/AnimatedEdge';
-import StyledEdge from '@/components/StyledEdge';
-import Toast from '@/components/Toast';
-import HelpPanel from '@/components/HelpPanel';
-import NumberInputNode from '@/components/NumberInputNode';
-import CostInputNode from '@/components/CostInputNode';
-import CalculationNode from '@/components/CalculationNode';
-import KeyboardShortcuts from '@/components/KeyboardShortcuts';
-import SelectionTracker from '@/components/SelectionTracker';
-import FlowToolbar from '@/components/FlowToolbar';
-import TailwindNode from '@/components/TailwindNode';
-import ResultNode from '@/components/ResultNode';
-import IfcImportNode from '@/components/IfcImportNode';
-import JsonLoadNode from '@/components/JsonLoadNode';
-import JsonDisplayNode from '@/components/JsonDisplayNode';
+import ButtonEdge from '../../components/ButtonEdge';
+import AnimatedEdge from '../../components/AnimatedEdge';
+import StyledEdge from '../../components/StyledEdge';
+import Toast from '../../components/Toast';
+import HelpPanel from '../../components/HelpPanel';
+import NumberInputNode from '../../components/NumberInputNode';
+import CostInputNode from '../../components/CostInputNode';
+import CalculationNode from '../../components/CalculationNode';
+import KeyboardShortcuts from '../../components/KeyboardShortcuts';
+import SelectionTracker from '../../components/SelectionTracker';
+import FlowToolbar from '../../components/FlowToolbar';
+import TailwindNode from '../../components/TailwindNode';
+import ResultNode from '../../components/ResultNode';
+import IfcImportNode from '../../components/IfcImportNode';
+import JsonLoadNode from '../../components/JsonLoadNode';
+import JsonDisplayNode from '../../components/JsonDisplayNode';
 // Import the client-only version instead of the regular one
-import ClientOnlyDebugDisplayNode from '@/components/ClientOnlyDebugDisplayNode';
-import JoinNode from '@/components/JoinNode';
-import CSVImportNode from '@/components/CSVImportNode';
-import MaterialCostNode from '@/components/MaterialCostNode';
+import ClientOnlyDebugDisplayNode from '../../components/ClientOnlyDebugDisplayNode';
+import JoinNode from '../../components/JoinNode';
+import CSVImportNode from '../../components/CSVImportNode';
+import MaterialCostNode from '../../components/MaterialCostNode';
 
 // Only keep the edge types we need
 const edgeTypes = {
