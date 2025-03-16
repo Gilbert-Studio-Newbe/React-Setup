@@ -628,4 +628,62 @@ To ensure the AI assistant consistently follows these standards when building or
 - The AI should identify any deviations from standards and explain the rationale
 - The AI should suggest improvements to align with standards where possible
 
-By following these guidelines, the AI assistant can ensure that all nodes it creates or modifies conform to the project's standards and integrate seamlessly with the existing codebase. 
+By following these guidelines, the AI assistant can ensure that all nodes it creates or modifies conform to the project's standards and integrate seamlessly with the existing codebase.
+
+### 10.8 BIM Data Processing Standards
+
+This section defines standards specific to nodes that process Building Information Modeling (BIM) data, ensuring consistent handling of complex BIM elements.
+
+#### 10.8.1 BIM Data Structure Handling
+- [ ] Nodes should implement efficient traversal of nested BIM structures
+- [ ] Nodes should handle parameter arrays with potentially hundreds of items
+- [ ] Nodes should implement caching for frequently accessed BIM properties
+- [ ] Nodes should support batch processing of multiple BIM elements when appropriate
+
+#### 10.8.2 BIM-Specific Port Types
+- [ ] Input ports for BIM data should follow the naming convention: `input_bim_[purpose]`
+  - Example: `input_bim_element`, `input_bim_collection`, `input_bim_filtered`
+- [ ] Output ports for BIM data should follow the naming convention: `output_bim_[purpose]`
+  - Example: `output_bim_processed`, `output_bim_filtered`, `output_bim_transformed`
+- [ ] Parameter-specific ports should use descriptive names: `input_parameter_[name]`, `output_parameter_[name]`
+- [ ] Collection ports should indicate plurality: `input_bim_elements`, `output_bim_filtered_elements`
+
+#### 10.8.3 BIM Parameter Handling
+- [ ] Nodes should handle all BIM parameter value types:
+  - String, Integer, Real Number, Length, Angle, Boolean, Material, Building Material
+- [ ] Nodes should implement proper unit conversion for dimensional values
+- [ ] Nodes should validate parameter existence before access
+- [ ] Nodes should provide fallback values for missing parameters
+
+#### 10.8.4 BIM Visualization Standards
+- [ ] Nodes that visualize BIM data should provide appropriate visual representations
+- [ ] 3D data should be properly projected to 2D when necessary
+- [ ] Complex properties should be collapsible/expandable in the UI
+- [ ] Visual indicators should show parameter types (numeric, text, boolean, etc.)
+
+#### 10.8.5 BIM Performance Optimization
+- [ ] Nodes processing multiple BIM elements should implement virtualization
+- [ ] Nodes should use worker threads for heavy computations when appropriate
+- [ ] Nodes should implement progressive loading for large BIM collections
+- [ ] Nodes should minimize re-rendering when BIM data changes
+
+#### 10.8.6 BIM-Specific Error Handling
+- [ ] Nodes should handle missing or malformed BIM data gracefully
+- [ ] Nodes should provide specific error messages for BIM-related issues
+- [ ] Nodes should validate BIM structure before processing
+- [ ] Nodes should detect and report inconsistencies in BIM parameters
+
+#### 10.8.7 BIM Node Categories
+- [ ] **BIM Importers**: Nodes that import and parse BIM data from various sources
+- [ ] **BIM Filters**: Nodes that filter BIM elements based on criteria
+- [ ] **BIM Transformers**: Nodes that transform BIM data structure or values
+- [ ] **BIM Extractors**: Nodes that extract specific properties from BIM elements
+- [ ] **BIM Calculators**: Nodes that perform calculations based on BIM parameters
+- [ ] **BIM Visualizers**: Nodes that visualize BIM elements or properties
+- [ ] **BIM Exporters**: Nodes that export BIM data to various formats
+
+#### 10.8.8 Multi-Element Processing
+- [ ] Nodes should clearly indicate whether they process single elements or collections
+- [ ] Collection processing nodes should implement batch operations where appropriate
+- [ ] Nodes should provide progress indicators for long-running operations on collections
+- [ ] Nodes should implement pagination or windowing for large collections 
