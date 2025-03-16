@@ -437,9 +437,7 @@ function Flow() {
           formatTemplate: '**{label}**, {value};',
           trimWhitespace: true,
           handleNullValues: 'skip',
-          formattedString: '',
-          dimensionValue: 0,
-          dimensionOutputMode: 'raw'
+          formattedString: ''
         };
         break;
       case 'result':
@@ -820,7 +818,7 @@ function Flow() {
                 
                 // Ensure we have a numeric value for calculation nodes
                 if (typeof outputValue === 'string' && 
-                    (targetNode.type === 'calculation' || targetNode.type === 'result')) {
+                    (node.type === 'calculation' || node.type === 'result')) {
                   // Try to convert to number if it's a formatted string
                   const parsed = parseFloat(outputValue);
                   if (!isNaN(parsed)) {
@@ -1148,14 +1146,8 @@ function Flow() {
             // Find the source node
             const sourceNode = nodes.find(n => n.id === connection.source);
             if (sourceNode) {
-              // Check which output handle was used (output or dimension)
-              const isMainOutput = connection.sourceHandle === 'output' || !connection.sourceHandle;
-              const isDimensionOutput = connection.sourceHandle === 'dimension';
-              
-              // Get the appropriate output value
-              let outputValue = isMainOutput 
-                ? sourceNode.data.outputValue 
-                : sourceNode.data.dimensionOutputValue;
+              // Get the output value
+              let outputValue = sourceNode.data.outputValue;
               
               // Only update if the value has changed
               let shouldUpdate = false;
@@ -1172,50 +1164,50 @@ function Flow() {
                       value: outputValue
                     }
                   };
-                } else if (node.type === 'calculation') {
-                  // For calculation nodes, determine which input to update based on the connection
-                  const isInput1 = connection.targetHandle === 'input1';
-                  
-                  // Ensure the value is a number for calculation nodes
-                  let calcValue = outputValue;
-                  if (typeof calcValue === 'string') {
-                    const parsed = parseFloat(calcValue);
-                    if (!isNaN(parsed)) {
-                      calcValue = parsed;
-                    } else {
-                      calcValue = 0; // Default to 0 if we can't parse a number
-                    }
-                  } else if (calcValue === null || calcValue === undefined) {
-                    calcValue = 0;
+                }
+              } else if (node.type === 'calculation') {
+                // For calculation nodes, determine which input to update based on the connection
+                const isInput1 = connection.targetHandle === 'input1';
+                
+                // Ensure the value is a number for calculation nodes
+                let calcValue = outputValue;
+                if (typeof calcValue === 'string') {
+                  const parsed = parseFloat(calcValue);
+                  if (!isNaN(parsed)) {
+                    calcValue = parsed;
+                  } else {
+                    calcValue = 0; // Default to 0 if we can't parse a number
                   }
-                  
-                  // Force to number type to ensure proper calculation
-                  calcValue = Number(calcValue);
-                  
-                  // Create a new data object with the updated input and force recalculation
+                } else if (calcValue === null || calcValue === undefined) {
+                  calcValue = 0;
+                }
+                
+                // Force to number type to ensure proper calculation
+                calcValue = Number(calcValue);
+                
+                // Create a new data object with the updated input and force recalculation
+                updated = true;
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    [isInput1 ? 'input1' : 'input2']: calcValue,
+                    // Remove result to force recalculation
+                    result: undefined
+                  }
+                };
+              } else {
+                // Generic approach for other node types
+                shouldUpdate = node.data.value !== outputValue;
+                if (shouldUpdate) {
                   updated = true;
                   return {
                     ...node,
                     data: {
                       ...node.data,
-                      [isInput1 ? 'input1' : 'input2']: calcValue,
-                      // Remove result to force recalculation
-                      result: undefined
+                      value: outputValue
                     }
                   };
-                } else {
-                  // Generic approach for other node types
-                  shouldUpdate = node.data.value !== outputValue;
-                  if (shouldUpdate) {
-                    updated = true;
-                    return {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        value: outputValue
-                      }
-                    };
-                  }
                 }
               }
             }

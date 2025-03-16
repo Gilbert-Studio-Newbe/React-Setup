@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { NodeProps, useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
 import JsonParameterFormatterNode from './JsonParameterFormatterNode';
 
@@ -32,15 +32,18 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
   const updateNodeInternals = useUpdateNodeInternals();
   
   // State for node data
-  const [dimensionOutputMode, setDimensionOutputMode] = useState(
-    data?.dimensionOutputMode || 'raw'
-  );
   const [jsonData, setJsonData] = useState<JsonData | null>(data?.jsonData || null);
   const [formattedString, setFormattedString] = useState<string>(data?.formattedString || 'No output yet');
-  const [dimensionValue, setDimensionValue] = useState<number>(data?.dimensionValue || 0);
   const [selectedParameters, setSelectedParameters] = useState<SelectedParameter[]>(
     data?.selectedParameters || []
   );
+  // Add state for collapsible parameters
+  const [isParametersVisible, setIsParametersVisible] = useState<boolean>(true);
+  
+  // Toggle parameters visibility
+  const toggleParametersVisibility = useCallback(() => {
+    setIsParametersVisible(prev => !prev);
+  }, []);
   
   // Handle parameter selection
   const handleSelectParameter = useCallback((index: number, paramId: string | null) => {
@@ -140,54 +143,6 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     return result || 'No output generated';
   }, [jsonData, selectedParameters, data?.formatTemplate, data?.trimWhitespace, data?.handleNullValues]);
   
-  // Extract dimension value from selected parameters
-  const extractDimensionValue = useCallback(() => {
-    if (!jsonData || !jsonData.parameters || !selectedParameters || selectedParameters.length === 0) {
-      return 0;
-    }
-    
-    // Use the first selected parameter with a numeric value
-    for (const selectedParam of selectedParameters) {
-      if (!selectedParam.paramId) continue;
-      
-      const param = jsonData.parameters?.find(p => p.id === selectedParam.paramId);
-      if (!param) continue;
-      
-      // Check if the value is numeric
-      const value = param.value;
-      if (typeof value === 'number' && !isNaN(value)) {
-        // Apply conversion if needed
-        if (selectedParam.convertToMillimeters && param.valueType === 'length') {
-          // Assuming the value is already in mm, but you could add conversion logic here if needed
-          return value;
-        }
-        return value;
-      }
-    }
-    
-    return 0;
-  }, [jsonData, selectedParameters]);
-  
-  // Update node data when dimension output mode changes
-  useEffect(() => {
-    if (id) {
-      setNodes(nodes => 
-        nodes.map(node => {
-          if (node.id === id) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                dimensionOutputMode
-              }
-            };
-          }
-          return node;
-        })
-      );
-    }
-  }, [dimensionOutputMode, id, setNodes]);
-  
   // Update node data when selected parameters change
   useEffect(() => {
     if (id) {
@@ -206,27 +161,20 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
         })
       );
       
-      // If we have JSON data, update the formatted string and dimension value
+      // If we have JSON data, update the formatted string
       if (jsonData) {
         const formatted = formatParameters();
         setFormattedString(formatted);
-        
-        const dimension = extractDimensionValue();
-        setDimensionValue(dimension);
       }
     }
-  }, [selectedParameters, id, setNodes, jsonData, formatParameters, extractDimensionValue]);
+  }, [selectedParameters, id, setNodes, jsonData, formatParameters]);
   
-  // Process incoming JSON data and update formatted string and dimension value
+  // Process incoming JSON data and update formatted string
   useEffect(() => {
     if (id && jsonData) {
       // Format parameters
       const formatted = formatParameters();
       setFormattedString(formatted);
-      
-      // Extract dimension value
-      const dimension = extractDimensionValue();
-      setDimensionValue(dimension);
       
       // Update node data
       setNodes(nodes => 
@@ -238,7 +186,6 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
                 ...node.data,
                 jsonData,
                 formattedString: formatted,
-                dimensionValue: dimension,
                 outputValue: formatted
               }
             };
@@ -250,7 +197,7 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
       // Update node internals to refresh handles
       updateNodeInternals(id);
     }
-  }, [id, jsonData, formatParameters, extractDimensionValue, setNodes, updateNodeInternals]);
+  }, [id, jsonData, formatParameters, setNodes, updateNodeInternals]);
   
   // Check for incoming connections and update JSON data
   useEffect(() => {
@@ -274,40 +221,60 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     });
   }, [id, getEdges, getNodes, jsonData]);
   
-  // Add event listener for custom events from the static component
+  // Update node data when state changes
   useEffect(() => {
-    const handleOutputModeChange = (event: CustomEvent) => {
-      setDimensionOutputMode(event.detail.mode);
-    };
+    if (!id) return;
     
-    // Add event listener
-    window.addEventListener('dimensionOutputModeChange', handleOutputModeChange as EventListener);
-    
-    // Clean up
-    return () => {
-      window.removeEventListener('dimensionOutputModeChange', handleOutputModeChange as EventListener);
-    };
-  }, []);
+    setNodes(nodes => 
+      nodes.map(node => {
+        if (node.id === id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              jsonData,
+              selectedParameters,
+              formattedString,
+              onSelectParameter: handleSelectParameter,
+              onToggleConvertToMillimeters: handleToggleConvertToMillimeters,
+              onUpdateCustomLabel: handleUpdateCustomLabel,
+              isParametersVisible, // Pass the visibility state
+              toggleParametersVisibility // Pass the toggle function
+            }
+          };
+        }
+        return node;
+      })
+    );
+  }, [
+    id, 
+    setNodes, 
+    jsonData, 
+    selectedParameters, 
+    formattedString, 
+    handleSelectParameter, 
+    handleToggleConvertToMillimeters, 
+    handleUpdateCustomLabel,
+    isParametersVisible, // Add to dependency array
+    toggleParametersVisibility // Add to dependency array
+  ]);
   
   // Merge the state into the data
   const enhancedData = {
     ...data,
-    dimensionOutputMode,
     formattedString,
-    dimensionValue,
     jsonData,
     selectedParameters,
     // Add callbacks for the static component to use
-    onOutputModeChange: (mode: string) => {
-      setDimensionOutputMode(mode);
-    },
     onSelectParameter: handleSelectParameter,
     onToggleConvertToMillimeters: handleToggleConvertToMillimeters,
-    onUpdateCustomLabel: handleUpdateCustomLabel
+    onUpdateCustomLabel: handleUpdateCustomLabel,
+    isParametersVisible, // Pass the visibility state
+    toggleParametersVisibility // Pass the toggle function
   };
   
   // Render the static component with enhanced data
   return <JsonParameterFormatterNode {...props} data={enhancedData} />;
 };
 
-export default React.memo(ClientJsonParameterFormatterNode); 
+export default memo(ClientJsonParameterFormatterNode); 
