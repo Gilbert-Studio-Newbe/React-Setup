@@ -1,0 +1,19 @@
+
+> reactflow-nextjs-app@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.2.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.4.254:3000
+
+ ✓ Starting...
+ ✓ Ready in 961ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1743ms (780 modules)
+ GET /flow/test 404 in 1896ms
+ ✓ Compiled in 206ms (329 modules)
+ ✓ Compiled in 64ms (329 modules)
+ ✓ Compiled in 62ms (329 modules)
+ ✓ Compiled in 73ms (329 modules)
+ ✓ Compiled in 67ms (329 modules)
+[?25h

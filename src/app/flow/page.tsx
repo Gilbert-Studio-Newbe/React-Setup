@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState, Suspense, ErrorBoundary } from 'react';
 import {
-  ReactFlow,
   addEdge,
   MiniMap,
   Controls,
@@ -21,6 +20,7 @@ import {
   OnConnect,
 } from '@xyflow/react';
 import dynamic from 'next/dynamic';
+import ClientReactFlowWithProvider from '@/components/ClientOnlyReactFlow';
 
 // Import ContextNodeMenu with dynamic import to prevent SSR
 const ContextNodeMenu = dynamic(
@@ -1635,7 +1635,7 @@ function Flow() {
 
   return (
     <div className="w-full h-screen">
-      <ReactFlow
+      <ClientReactFlowWithProvider
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -1713,7 +1713,7 @@ function Flow() {
             }}
           />
         )}
-      </ReactFlow>
+      </ClientReactFlowWithProvider>
       
       {/* UI Components */}
       <FlowToolbar className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10" onAction={handleAction} />
@@ -1735,7 +1735,7 @@ function Flow() {
   );
 }
 
-// Wrap the Flow component with ReactFlowProvider to ensure context is available
+// Wrap the Flow component with ErrorBoundary
 export default function FlowPage() {
   // State to track if we're on client side
   const [isClient, setIsClient] = useState(false);
@@ -1752,9 +1752,7 @@ export default function FlowPage() {
 
   return (
     <ClientErrorBoundary>
-      <ReactFlowProvider>
-        <Flow />
-      </ReactFlowProvider>
+      <Flow />
     </ClientErrorBoundary>
   );
 } 

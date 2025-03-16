@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, Node } from '@xyflow/react';
 
 // Base interface that can be extended by specific node types
 export interface BaseNodeData {
@@ -9,7 +9,9 @@ export interface BaseNodeData {
   [key: string]: unknown;  // Allow additional properties
 }
 
-interface BaseNodeProps<T extends BaseNodeData> extends NodeProps<T> {
+// Use a more specific type for the NodeProps generic parameter
+interface BaseNodeProps extends Omit<NodeProps, 'data'> {
+  data?: any;
   children?: React.ReactNode;
   error?: string;
   handles?: {
@@ -35,7 +37,7 @@ interface BaseNodeProps<T extends BaseNodeData> extends NodeProps<T> {
   titleExtras?: React.ReactNode;
 }
 
-export const BaseNode = <T extends BaseNodeData>({ 
+export const BaseNode = ({ 
   data,
   isConnectable,
   children,
@@ -48,7 +50,7 @@ export const BaseNode = <T extends BaseNodeData>({
   nodeSize = { width: 280, height: 120 },
   // Add titleExtras parameter with default value of null
   titleExtras = null
-}: BaseNodeProps<T>) => {
+}: BaseNodeProps) => {
   return (
     <div 
       className={`
@@ -96,8 +98,11 @@ export const BaseNode = <T extends BaseNodeData>({
 
       {/* Input Handles */}
       {handles.inputs?.map((input, index) => {
-        // Determine the position based on the side property
-        const handlePosition = input.side ? Position[input.side.charAt(0).toUpperCase() + input.side.slice(1)] : Position.Left;
+        // Fix for Position indexing using type assertion
+        const positionKey = input.side ? 
+          (input.side.charAt(0).toUpperCase() + input.side.slice(1)) as keyof typeof Position : 
+          'Left';
+        const handlePosition = Position[positionKey];
         
         // Calculate the style based on the side
         let style: React.CSSProperties = { 
@@ -133,8 +138,11 @@ export const BaseNode = <T extends BaseNodeData>({
 
       {/* Output Handles */}
       {handles.outputs?.map((output, index) => {
-        // Determine the position based on the side property
-        const handlePosition = output.side ? Position[output.side.charAt(0).toUpperCase() + output.side.slice(1)] : Position.Right;
+        // Fix for Position indexing using type assertion
+        const positionKey = output.side ? 
+          (output.side.charAt(0).toUpperCase() + output.side.slice(1)) as keyof typeof Position : 
+          'Right';
+        const handlePosition = Position[positionKey];
         
         // Calculate the style based on the side
         let style: React.CSSProperties = { 
