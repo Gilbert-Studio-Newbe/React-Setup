@@ -28,7 +28,7 @@ interface SelectedParameter {
 // Client-side wrapper component that adds interactivity
 const ClientJsonParameterFormatterNode = (props: NodeProps) => {
   const { data, id } = props;
-  const { setNodes, getNodes, getEdges } = useReactFlow();
+  const { setNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   
   // State for node data
@@ -189,11 +189,27 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     }
   }, [selectedParameters, id, setNodes, jsonData, formatParameters]);
   
+  // Add an effect to update local state when jsonData prop changes
+  useEffect(() => {
+    if (data?.jsonData && JSON.stringify(data.jsonData) !== JSON.stringify(jsonData)) {
+      console.log('ClientJsonParameterFormatterNode: Received new JSON data from props', {
+        parametersCount: data.jsonData.parameters?.length || 0,
+        nodeId: id
+      });
+      setJsonData(data.jsonData);
+    }
+  }, [data?.jsonData, jsonData, id]);
+  
   // Process incoming JSON data and update formatted string
   useEffect(() => {
     if (id && jsonData) {
       // Format parameters
       const formatted = formatParameters();
+      console.log('ClientJsonParameterFormatterNode: Formatted parameters', {
+        formattedString: formatted,
+        dimensionOutputValue,
+        nodeId: id
+      });
       setFormattedString(formatted);
       
       // Update node data
@@ -219,50 +235,6 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
       updateNodeInternals(id);
     }
   }, [id, jsonData, formatParameters, setNodes, updateNodeInternals, dimensionOutputValue]);
-  
-  // Check for incoming connections and update JSON data
-  useEffect(() => {
-    if (!id) return;
-    
-    const edges = getEdges();
-    const nodes = getNodes();
-    
-    // Find edges where this node is the target
-    const incomingEdges = edges.filter(edge => edge.target === id);
-    
-    console.log('JsonParameterFormatterNode: Checking incoming edges', { 
-      nodeId: id, 
-      incomingEdgesCount: incomingEdges.length,
-      incomingEdges
-    });
-    
-    // Process each incoming edge
-    incomingEdges.forEach(edge => {
-      const sourceNode = nodes.find(node => node.id === edge.source);
-      console.log('JsonParameterFormatterNode: Source node', { 
-        sourceNodeId: sourceNode?.id,
-        sourceNodeType: sourceNode?.type,
-        hasJsonData: sourceNode?.data?.jsonData ? true : false,
-        targetHandle: edge.targetHandle,
-        sourceHandle: edge.sourceHandle
-      });
-      
-      // Accept connections to any handle if the source node has JSON data
-      if (sourceNode && sourceNode.data.jsonData) {
-        // Update JSON data if it's different
-        if (JSON.stringify(sourceNode.data.jsonData) !== JSON.stringify(jsonData)) {
-          console.log('JsonParameterFormatterNode: Updating JSON data from source node');
-          setJsonData(sourceNode.data.jsonData);
-        } else {
-          console.log('JsonParameterFormatterNode: JSON data unchanged');
-        }
-      } else if (!sourceNode) {
-        console.log('JsonParameterFormatterNode: Source node not found');
-      } else if (!sourceNode.data.jsonData) {
-        console.log('JsonParameterFormatterNode: Source node has no JSON data');
-      }
-    });
-  }, [id, getEdges, getNodes, jsonData]);
   
   // Update node data when state changes
   useEffect(() => {

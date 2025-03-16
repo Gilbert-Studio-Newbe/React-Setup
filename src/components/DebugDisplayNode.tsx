@@ -1,7 +1,8 @@
 'use client';
 
-import React, { memo, useState, useEffect, useRef } from 'react';
+import React, { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { Handle, Position, NodeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
+import useIsomorphicLayoutEffect from '../hooks/useIsomorphicLayoutEffect';
 
 interface DebugDisplayNodeData {
   label?: string;
@@ -33,14 +34,14 @@ const DebugDisplayNode = ({ data, isConnectable, id }: NodeProps<DebugDisplayNod
   const edges = useEdges();
   
   // Set initial selected key when data changes
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!selectedKey && Object.keys(restData).length > 0) {
       setSelectedKey(Object.keys(restData)[0]);
     }
   }, [restData, selectedKey]);
   
   // Check if content is scrollable
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (contentRef.current) {
       const { scrollHeight, clientHeight } = contentRef.current;
       setIsScrollable(scrollHeight > clientHeight);
@@ -48,7 +49,7 @@ const DebugDisplayNode = ({ data, isConnectable, id }: NodeProps<DebugDisplayNod
   }, [restData, isExpanded, expandedValues, inputs]);
   
   // Collect values from connected nodes
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!id) return;
     
     // Find all edges that connect to this node
@@ -100,19 +101,26 @@ const DebugDisplayNode = ({ data, isConnectable, id }: NodeProps<DebugDisplayNod
     });
     
     // Check if inputs have actually changed before updating state
-    const currentInputsStr = JSON.stringify(inputs);
-    const newInputsStr = JSON.stringify(newInputs);
-    
-    if (currentInputsStr !== newInputsStr) {
-      // Only update if there's an actual change
+    try {
+      const currentInputsStr = JSON.stringify(inputs);
+      const newInputsStr = JSON.stringify(newInputs);
+      
+      if (currentInputsStr !== newInputsStr) {
+        // Only update if there's an actual change
+        setInputs(newInputs);
+        updateNodeData(newInputs);
+      }
+    } catch (error) {
+      console.error('Error comparing inputs in DebugDisplayNode:', error);
+      // Fallback: update anyway
       setInputs(newInputs);
       updateNodeData(newInputs);
     }
     
-  }, [id, nodes, edges]);
+  }, [id, nodes, edges, setInputs, updateNodeData]);
   
-  // Update node data with inputs
-  const updateNodeData = (newInputs: Record<string, any>) => {
+  // Update node data with inputs - memoize this function
+  const updateNodeData = useCallback((newInputs: Record<string, any>) => {
     if (!id) return;
     
     // Use a callback to ensure we're not causing unnecessary updates
@@ -122,16 +130,21 @@ const DebugDisplayNode = ({ data, isConnectable, id }: NodeProps<DebugDisplayNod
       if (!currentNode) return nodes;
       
       // Check if the data has actually changed
-      const currentInputs = currentNode.data.inputs;
-      const currentValue = currentNode.data.value;
-      const newValue = Object.values(newInputs)[0]?.value;
-      
-      if (
-        JSON.stringify(currentInputs) === JSON.stringify(newInputs) &&
-        JSON.stringify(currentValue) === JSON.stringify(newValue)
-      ) {
-        // No change, return the original nodes
-        return nodes;
+      try {
+        const currentInputs = currentNode.data.inputs;
+        const currentValue = currentNode.data.value;
+        const newValue = Object.values(newInputs)[0]?.value;
+        
+        if (
+          JSON.stringify(currentInputs) === JSON.stringify(newInputs) &&
+          JSON.stringify(currentValue) === JSON.stringify(newValue)
+        ) {
+          // No change, return the original nodes
+          return nodes;
+        }
+      } catch (error) {
+        console.error('Error comparing node data in DebugDisplayNode:', error);
+        // Continue with the update in case of error
       }
       
       // Only update if there's an actual change
@@ -150,7 +163,7 @@ const DebugDisplayNode = ({ data, isConnectable, id }: NodeProps<DebugDisplayNod
         return node;
       });
     });
-  };
+  }, [id, setNodes]);
   
   // Format value for display
   const formatValue = (value: any, key?: string): string => {

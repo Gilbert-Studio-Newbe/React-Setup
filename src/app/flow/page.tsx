@@ -55,7 +55,8 @@ import ResultNode from '@/components/ResultNode';
 import IfcImportNode from '@/components/IfcImportNode';
 import JsonLoadNode from '@/components/JsonLoadNode';
 import JsonDisplayNode from '@/components/JsonDisplayNode';
-import DebugDisplayNode from '@/components/DebugDisplayNode';
+// Import the client-only version instead of the regular one
+import ClientOnlyDebugDisplayNode from '@/components/ClientOnlyDebugDisplayNode';
 import JoinNode from '@/components/JoinNode';
 import CSVImportNode from '@/components/CSVImportNode';
 import MaterialCostNode from '@/components/MaterialCostNode';
@@ -77,7 +78,8 @@ const nodeTypes = {
   ifcimport: IfcImportNode,
   jsonload: JsonLoadNode,
   jsondisplay: JsonDisplayNode,
-  debugdisplay: DebugDisplayNode,
+  // Use the client-only version
+  debugdisplay: ClientOnlyDebugDisplayNode,
   join: JoinNode,
   csvimport: CSVImportNode,
   materialcost: MaterialCostNode,
@@ -734,16 +736,29 @@ function Flow() {
       
       // If connecting to a Debug Display node, pass all source node data
       if (targetNode?.type === 'debugdisplay' && sourceNode) {
+        console.log('Flow: Connecting to DebugDisplayNode', {
+          targetNodeId: targetNode.id,
+          sourceNodeId: sourceNode.id,
+          sourceNodeType: sourceNode.type,
+          sourceNodeData: sourceNode.data ? 'Has data' : 'No data',
+          targetHandle: params.targetHandle,
+          sourceHandle: params.sourceHandle
+        });
+        
+        // Create a deep copy of the source node data to avoid reference issues
+        const sourceNodeDataCopy = sourceNode.data ? JSON.parse(JSON.stringify(sourceNode.data)) : {};
+        
         setNodes(nds => 
           nds.map(node => {
             if (node.id === targetNode.id) {
+              console.log('Flow: Updating DebugDisplayNode with source node data');
               return {
                 ...node,
                 data: {
                   ...node.data,
                   sourceNodeId: sourceNode.id,
                   sourceNodeType: sourceNode.type,
-                  sourceNodeData: { ...sourceNode.data }
+                  sourceNodeData: sourceNodeDataCopy
                 }
               };
             }
@@ -766,14 +781,19 @@ function Flow() {
         // Check if the source node has JSON data, regardless of target handle
         if (sourceNode.data.jsonData) {
           console.log('Flow: Source node has JSON data, updating target node');
+          
+          // Create a deep copy of the JSON data to avoid reference issues
+          const jsonDataCopy = JSON.parse(JSON.stringify(sourceNode.data.jsonData));
+          
           setNodes(nds => 
             nds.map(node => {
               if (node.id === targetNode.id) {
+                console.log('Flow: Updating JsonParameterFormatterNode with JSON data');
                 return {
                   ...node,
                   data: {
                     ...node.data,
-                    jsonData: sourceNode.data.jsonData
+                    jsonData: jsonDataCopy
                   }
                 };
               }
@@ -782,6 +802,9 @@ function Flow() {
           );
         } else {
           console.log('Flow: Source node does not have JSON data');
+          // Show a toast notification to inform the user
+          setToast({ message: 'Source node does not have JSON data' });
+          setTimeout(() => setToast(null), 3000);
         }
       }
       
@@ -1110,18 +1133,24 @@ function Flow() {
       setNodes(nds => {
         let updated = false;
         const newNodes = nds.map(node => {
-          // Check if this node is a target in any of the JSON connections
-          const connection = jsonLoadConnections.find(edge => edge.target === node.id);
-          if (connection) {
-            // Find the source node
-            const sourceNode = nodes.find(n => n.id === connection.source);
-            if (sourceNode?.data.jsonData && (!node.data.jsonData || JSON.stringify(node.data.jsonData) !== JSON.stringify(sourceNode.data.jsonData))) {
+          // Find connections where this node is the target
+          const connections = jsonLoadConnections.filter(conn => conn.target === node.id);
+          if (connections.length > 0) {
+            // Get the source node for the first connection
+            const sourceNodeId = connections[0].source;
+            const sourceNode = nds.find(n => n.id === sourceNodeId);
+            
+            if (sourceNode?.data?.jsonData && (!node.data.jsonData || 
+                JSON.stringify(node.data.jsonData) !== JSON.stringify(sourceNode.data.jsonData))) {
               updated = true;
+              // Create a deep copy of the JSON data to avoid reference issues
+              const jsonDataCopy = JSON.parse(JSON.stringify(sourceNode.data.jsonData));
+              
               return {
                 ...node,
                 data: {
                   ...node.data,
-                  jsonData: sourceNode.data.jsonData
+                  jsonData: jsonDataCopy
                 }
               };
             }
@@ -1133,296 +1162,151 @@ function Flow() {
       });
     }
     
-    // Find all connections to Debug Display nodes
+    // Find all connections to JsonParameterFormatterNode
+    const jsonFormatterConnections = edges.filter(edge => {
+      const targetNode = nodes.find(node => node.id === edge.target);
+      return targetNode?.type === 'jsonparameterformatter';
+    });
+    
+    // Update JsonParameterFormatterNode nodes with JSON data from connected nodes
+    if (jsonFormatterConnections.length > 0) {
+      console.log('Flow: Found connections to JsonParameterFormatterNode, updating...');
+      
+      setNodes(nds => {
+        let updated = false;
+        const newNodes = nds.map(node => {
+          // Only process JsonParameterFormatterNode nodes
+          if (node.type !== 'jsonparameterformatter') return node;
+          
+          // Find connections where this node is the target
+          const connections = jsonFormatterConnections.filter(conn => conn.target === node.id);
+          if (connections.length === 0) return node;
+          
+          // Get the source node for the first connection
+          const sourceNodeId = connections[0].source;
+          const sourceNode = nds.find(n => n.id === sourceNodeId);
+          
+          if (sourceNode?.data?.jsonData && (!node.data.jsonData || 
+              JSON.stringify(node.data.jsonData) !== JSON.stringify(sourceNode.data.jsonData))) {
+            updated = true;
+            console.log('Flow: Updating JsonParameterFormatterNode with new JSON data');
+            
+            // Create a deep copy of the JSON data to avoid reference issues
+            const jsonDataCopy = JSON.parse(JSON.stringify(sourceNode.data.jsonData));
+            
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                jsonData: jsonDataCopy
+              }
+            };
+          }
+          
+          return node;
+        });
+        
+        return updated ? newNodes : nds;
+      });
+    }
+    
+    // Find all connections to DebugDisplayNode
     const debugDisplayConnections = edges.filter(edge => {
       const targetNode = nodes.find(node => node.id === edge.target);
       return targetNode?.type === 'debugdisplay';
     });
     
-    // Find all connections to JSON Parameter Formatter nodes
-    const jsonParameterFormatterConnections = edges.filter(edge => {
-      const targetNode = nodes.find(node => node.id === edge.target);
-      return targetNode?.type === 'jsonparameterformatter';
-    });
-    
-    // Find all connections from JSON Parameter Formatter nodes
-    const jsonParameterFormatterOutputConnections = edges.filter(edge => {
-      const sourceNode = nodes.find(node => node.id === edge.source);
-      return sourceNode?.type === 'jsonparameterformatter';
-    });
-    
-    // Update nodes connected to JSON Parameter Formatter outputs
-    if (jsonParameterFormatterOutputConnections.length > 0) {
-      setNodes(nds => {
-        let updated = false;
-        const newNodes = nds.map(node => {
-          // Check if this node is a target in any of the JSON Parameter Formatter output connections
-          const connection = jsonParameterFormatterOutputConnections.find(edge => edge.target === node.id);
-          if (connection) {
-            // Find the source node
-            const sourceNode = nodes.find(n => n.id === connection.source);
-            if (sourceNode) {
-              // Get the output value
-              let outputValue = sourceNode.data.outputValue;
-              
-              // Only update if the value has changed
-              let shouldUpdate = false;
-              
-              // Handle different target node types
-              if (node.type === 'result') {
-                shouldUpdate = node.data.value !== outputValue;
-                if (shouldUpdate) {
-                  updated = true;
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      value: outputValue
-                    }
-                  };
-                }
-              } else if (node.type === 'calculation') {
-                // For calculation nodes, determine which input to update based on the connection
-                const isInput1 = connection.targetHandle === 'input1';
-                
-                // Ensure the value is a number for calculation nodes
-                let calcValue = outputValue;
-                if (typeof calcValue === 'string') {
-                  const parsed = parseFloat(calcValue);
-                  if (!isNaN(parsed)) {
-                    calcValue = parsed;
-                  } else {
-                    calcValue = 0; // Default to 0 if we can't parse a number
-                  }
-                } else if (calcValue === null || calcValue === undefined) {
-                  calcValue = 0;
-                }
-                
-                // Force to number type to ensure proper calculation
-                calcValue = Number(calcValue);
-                
-                // Create a new data object with the updated input and force recalculation
-                updated = true;
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    [isInput1 ? 'input1' : 'input2']: calcValue,
-                    // Remove result to force recalculation
-                    result: undefined
-                  }
-                };
-              } else {
-                // Generic approach for other node types
-                shouldUpdate = node.data.value !== outputValue;
-                if (shouldUpdate) {
-                  updated = true;
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      value: outputValue
-                    }
-                  };
-                }
-              }
-            }
-          }
-          return node;
-        });
-        
-        return updated ? newNodes : nds;
-      });
-    }
-    
-    // Update the Debug Display nodes with the source node data
+    // Update DebugDisplayNode nodes with data from connected nodes
     if (debugDisplayConnections.length > 0) {
+      console.log('Flow: Found connections to DebugDisplayNode, updating...');
+      
       setNodes(nds => {
         let updated = false;
         const newNodes = nds.map(node => {
-          // Check if this node is a Debug Display node that's a target in any connection
-          if (node.type === 'debugdisplay') {
-            const connection = debugDisplayConnections.find(edge => edge.target === node.id);
-            if (connection) {
-              // Find the source node
-              const sourceNode = nodes.find(n => n.id === connection.source);
-              if (sourceNode) {
-                // Only update if the source node data has changed
-                const sourceDataString = JSON.stringify(sourceNode.data);
-                const currentSourceDataString = node.data.sourceNodeData ? JSON.stringify(node.data.sourceNodeData) : '';
-                
-                if (sourceDataString !== currentSourceDataString) {
-                  updated = true;
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      sourceNodeId: sourceNode.id,
-                      sourceNodeType: sourceNode.type,
-                      sourceNodeData: { ...sourceNode.data }
-                    }
-                  };
-                }
-              }
-            }
-          }
-          return node;
-        });
-        
-        return updated ? newNodes : nds;
-      });
-    }
-    
-    // Find all connections from JSON Display nodes to other nodes
-    const jsonDisplayConnections = edges.filter(edge => {
-      const sourceNode = nodes.find(node => node.id === edge.source);
-      return sourceNode?.type === 'jsondisplay';
-    });
-    
-    // Find all connections from Calculation nodes to other nodes
-    const calculationConnections = edges.filter(edge => {
-      const sourceNode = nodes.find(node => node.id === edge.source);
-      return sourceNode?.type === 'calculation';
-    });
-    
-    // Log calculation connections for debugging
-    if (calculationConnections.length > 0) {
-      console.log('Calculation connections:', calculationConnections.map(conn => ({
-        from: conn.source,
-        to: conn.target,
-        sourceType: nodes.find(n => n.id === conn.source)?.type,
-        targetType: nodes.find(n => n.id === conn.target)?.type
-      })));
-    }
-    
-    // Update the target nodes with the output value from the Calculation nodes
-    if (calculationConnections.length > 0) {
-      setNodes(nds => {
-        let updated = false;
-        const newNodes = nds.map(node => {
-          // Check if this node is a target in any of the Calculation connections
-          const connection = calculationConnections.find(edge => edge.target === node.id);
-          if (connection) {
-            // Find the source node
-            const sourceNode = nodes.find(n => n.id === connection.source);
+          // Only process DebugDisplayNode nodes
+          if (node.type !== 'debugdisplay') return node;
+          
+          // Find connections where this node is the target
+          const connections = debugDisplayConnections.filter(conn => conn.target === node.id);
+          if (connections.length === 0) return node;
+          
+          // Process each connection
+          let nodeUpdated = false;
+          let newData = { ...node.data };
+          
+          connections.forEach((conn, index) => {
+            const sourceNodeId = conn.source;
+            const sourceNode = nds.find(n => n.id === sourceNodeId);
+            
             if (sourceNode) {
-              // Get the output value from the calculation node
-              // Try outputValue first, then result if outputValue is not available
-              let outputValue = sourceNode.data.outputValue !== undefined 
-                ? sourceNode.data.outputValue 
-                : sourceNode.data.result;
+              const inputKey = `input${index + 1}`;
+              const sourceName = sourceNode.data.label || `Node ${sourceNodeId}`;
               
-              console.log('Calculation node output value:', outputValue, typeof outputValue);
-              
-              // Only update if the value has changed and the target is a result node
-              if (node.type === 'result' && node.data.value !== outputValue) {
-                updated = true;
-                console.log('Updating result node with calculation output:', outputValue);
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    value: outputValue
-                  }
-                };
-              }
-            }
-          }
-          return node;
-        });
-        
-        return updated ? newNodes : nds;
-      });
-    }
-    
-    // Update the target nodes with the output value from the JSON Display nodes
-    if (jsonDisplayConnections.length > 0) {
-      setNodes(nds => {
-        let updated = false;
-        const newNodes = nds.map(node => {
-          // Check if this node is a target in any of the JSON Display connections
-          const connection = jsonDisplayConnections.find(edge => edge.target === node.id);
-          if (connection) {
-            // Find the source node
-            const sourceNode = nodes.find(n => n.id === connection.source);
-            if (sourceNode?.data.outputValue !== undefined) {
-              // Get the output value based on the output mode
-              let outputValue = sourceNode.data.outputValue;
-              
-              // Ensure we have a numeric value for calculation nodes
-              if (typeof outputValue === 'string' && 
-                  (node.type === 'calculation' || node.type === 'result')) {
-                // Try to convert to number if it's a formatted string
-                const parsed = parseFloat(outputValue);
-                if (!isNaN(parsed)) {
-                  outputValue = parsed;
-                }
-              }
-              
-              // Only update if the value has changed
-              let shouldUpdate = false;
-              
-              // Handle different target node types
-              if (node.type === 'result') {
-                shouldUpdate = node.data.value !== outputValue;
-                if (shouldUpdate) {
-                  updated = true;
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      value: outputValue
-                    }
-                  };
-                }
-              } else if (node.type === 'calculation') {
-                // For calculation nodes, determine which input to update based on the connection
-                const isInput1 = connection.targetHandle === 'input1';
-                
-                // Ensure the value is a number for calculation nodes
-                let calcValue = outputValue;
-                if (typeof calcValue === 'string') {
-                  const parsed = parseFloat(calcValue);
-                  if (!isNaN(parsed)) {
-                    calcValue = parsed;
-                  } else {
-                    calcValue = 0; // Default to 0 if we can't parse a number
-                  }
-                } else if (calcValue === null || calcValue === undefined) {
-                  calcValue = 0;
-                }
-                
-                // Force to number type to ensure proper calculation
-                calcValue = Number(calcValue);
-                
-                console.log(`Updating calculation ${isInput1 ? 'input1' : 'input2'} to:`, calcValue, typeof calcValue);
-                
-                // Create a new data object with the updated input and force recalculation
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    [isInput1 ? 'input1' : 'input2']: calcValue,
-                    // Remove result to force recalculation
-                    result: undefined
-                  }
-                };
+              // Extract value from source node
+              let value;
+              if (sourceNode.data.outputValue !== undefined) {
+                value = sourceNode.data.outputValue;
+              } else if (sourceNode.data.value !== undefined) {
+                value = sourceNode.data.value;
+              } else if (sourceNode.data.result !== undefined) {
+                value = sourceNode.data.result;
               } else {
-                // Generic approach for other node types
-                shouldUpdate = node.data.value !== outputValue;
-                if (shouldUpdate) {
-                  updated = true;
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      value: outputValue
+                value = { ...sourceNode.data };
+              }
+              
+              // Check if the value has changed
+              try {
+                const currentValue = node.data.inputs?.[inputKey]?.value;
+                if (JSON.stringify(currentValue) !== JSON.stringify(value)) {
+                  nodeUpdated = true;
+                  
+                  // Update the inputs
+                  newData.inputs = {
+                    ...(newData.inputs || {}),
+                    [inputKey]: {
+                      value,
+                      source: sourceName,
+                      sourceId: sourceNodeId,
+                      sourceHandle: conn.sourceHandle
                     }
                   };
+                  
+                  // For backward compatibility, set the first input as the main value
+                  if (index === 0) {
+                    newData.value = value;
+                  }
+                }
+              } catch (error) {
+                console.error('Error comparing values in DebugDisplayNode update:', error);
+                nodeUpdated = true;
+                
+                // Update the inputs
+                newData.inputs = {
+                  ...(newData.inputs || {}),
+                  [inputKey]: {
+                    value,
+                    source: sourceName,
+                    sourceId: sourceNodeId,
+                    sourceHandle: conn.sourceHandle
+                  }
+                };
+                
+                // For backward compatibility, set the first input as the main value
+                if (index === 0) {
+                  newData.value = value;
                 }
               }
             }
+          });
+          
+          if (nodeUpdated) {
+            updated = true;
+            return {
+              ...node,
+              data: newData
+            };
           }
+          
           return node;
         });
         

@@ -276,7 +276,7 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
       <Handle
         type="target"
         position={Position.Left}
-        id="input"
+        id="json-input"
         style={{ 
           background: '#6366f1', 
           width: '10px', 
@@ -284,6 +284,15 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
           border: '2px solid #6366f1'
         }}
         isConnectable={isConnectable}
+      />
+      
+      {/* Connection Status Indicator */}
+      <div 
+        className="absolute top-0 left-0 w-2 h-2 rounded-full transform -translate-x-1/2 -translate-y-1/2"
+        style={{ 
+          backgroundColor: jsonData ? '#34D399' : '#F87171',
+          boxShadow: `0 0 4px ${jsonData ? '#34D399' : '#F87171'}`
+        }}
       />
       
       {/* Output Handle */}
