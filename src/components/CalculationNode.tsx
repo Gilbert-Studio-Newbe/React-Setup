@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { NodeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
+import { NodeProps, useReactFlow, useNodes, useEdges, Handle, Position } from '@xyflow/react';
 import BaseNode, { BaseNodeData } from './BaseNode';
 
+// Define a proper interface for the CalculationNodeData
 interface CalculationNodeData extends BaseNodeData {
   input1?: number;
   input2?: number;
@@ -12,8 +13,10 @@ interface CalculationNodeData extends BaseNodeData {
   hasDollarSign?: boolean;
   customName?: string;
   isExpanded?: boolean;
+  numericOutputValue?: number;
 }
 
+// Define default data for the node
 const defaultData: CalculationNodeData = {
   label: 'Calculate',
   input1: 0,
@@ -26,22 +29,28 @@ const defaultData: CalculationNodeData = {
   isExpanded: false
 };
 
-const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defaultData, isConnectable, id }) => {
+// Define the component with proper type annotations
+const CalculationNode = (props: NodeProps) => {
+  const { data, isConnectable, id } = props;
+  
+  // Safely cast data to our expected type with defaults
+  const nodeData: CalculationNodeData = { ...defaultData, ...(data as CalculationNodeData || {}) };
+  
   const { setNodes } = useReactFlow();
   const nodes = useNodes();
   const edges = useEdges();
 
-  // Initialize state with default values or data props
-  const [input1, setInput1] = useState<number>(data.input1 ?? 0);
-  const [input2, setInput2] = useState<number>(data.input2 ?? 0);
+  // Initialize state with values from nodeData
+  const [input1, setInput1] = useState<number>(nodeData.input1 ?? 0);
+  const [input2, setInput2] = useState<number>(nodeData.input2 ?? 0);
   const [operation, setOperation] = useState<'add' | 'subtract' | 'multiply' | 'divide'>(
-    data.operation ?? 'add'
+    nodeData.operation ?? 'add'
   );
-  const [result, setResult] = useState<number | string>(data.result ?? 0);
+  const [result, setResult] = useState<number | string>(nodeData.result ?? 0);
   const [error, setError] = useState<string>('');
-  const [hasDollarSign, setHasDollarSign] = useState<boolean>(data.hasDollarSign ?? false);
-  const [customName, setCustomName] = useState<string>(data.customName ?? '');
-  const [isExpanded, setIsExpanded] = useState<boolean>(data.isExpanded ?? false);
+  const [hasDollarSign, setHasDollarSign] = useState<boolean>(nodeData.hasDollarSign ?? false);
+  const [customName, setCustomName] = useState<string>(nodeData.customName ?? '');
+  const [isExpanded, setIsExpanded] = useState<boolean>(nodeData.isExpanded ?? false);
   
   // Track if we're currently processing an update to prevent loops
   const processingUpdate = React.useRef(false);
@@ -90,7 +99,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
           // Store both the numeric result and the formatted result
           const formattedOutput = hasDollarSign ? `$${roundedResult.toFixed(2)}` : roundedResult;
           
-          const newData: CalculationNodeData = {
+          const newData = {
             ...node.data,
             result: roundedResult,
             // Always use the formatted result as the outputValue to ensure consistency
@@ -153,6 +162,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
         // Get the value from the source node with type checking
         let value: number = 0;
         let sourceHasDollarSign = false;
+        
+        // Safely cast the node data to a record type for property access
         const nodeData = sourceNode.data as Record<string, unknown>;
         
         // Check if source has dollar sign in its output
@@ -252,7 +263,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   }, [input1, input2, operation, hasDollarSign, calculateResult]);
 
   // Operation symbol mapping
-  const operationSymbols = {
+  const operationSymbols: Record<string, string> = {
     add: '+',
     subtract: '-',
     multiply: '×',
@@ -284,7 +295,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   };
 
   // Get display name (custom name or default label)
-  const displayName = customName || data.label || 'Calculate';
+  const displayName = customName || nodeData.label || 'Calculate';
 
   // Format the display result with dollar sign if needed
   const displayResult = typeof result === 'number' 
@@ -303,58 +314,15 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
   }, [id, result, displayResult, hasDollarSign]);
 
   return (
-    <BaseNode<CalculationNodeData>
-      data={{
-        ...data,
-        label: displayName // Pass the displayName as the label to BaseNode
-      }}
-      isConnectable={isConnectable}
-      error={error}
-      // Specify fixed dimensions for the Calculation node that align with the grid
-      nodeSize={{ width: 320, height: 360 }}
-      handles={{
-        inputs: [
-          { 
-            id: 'input1', 
-            position: 50, 
-            style: { 
-              background: '#6366f1',
-              border: '2px solid #6366f1',
-              width: '10px',
-              height: '10px'
-            } 
-          },
-          { 
-            id: 'input2', 
-            position: 50,
-            side: 'bottom',
-            style: { 
-              background: '#6366f1',
-              border: '2px solid #6366f1',
-              width: '10px',
-              height: '10px'
-            } 
-          }
-        ],
-        outputs: [
-          { 
-            id: 'output', 
-            position: 50,
-            style: { 
-              background: error ? '#ef4444' : '#f59e0b',
-              border: error ? '2px solid #ef4444' : '2px solid #f59e0b',
-              width: '10px',
-              height: '10px'
-            }
-          }
-        ]
-      }}
-    >
-      {/* Remove the duplicate title and keep only the Expand/Collapse Toggle */}
-      <div className="mb-3 flex justify-end items-center">
+    <div className="relative p-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md" style={{ width: '320px' }}>
+      {/* Title */}
+      <div className="mb-3 flex justify-between items-center">
+        <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+          {displayName}
+        </div>
         <button 
           onClick={toggleExpanded}
-          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
+          className="p-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
           {isExpanded ? 'Collapse' : 'Expand'}
         </button>
@@ -368,7 +336,7 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
           </label>
           <input
             type="text"
-            className="w-full p-2 border rounded bg-white dark:bg-gray-700 nodrag"
+            className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-gray-200 nodrag"
             value={customName}
             onChange={(e) => {
               const newName = e.target.value;
@@ -464,7 +432,58 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
           </span>
         </div>
       </div>
-    </BaseNode>
+      
+      {/* Error Display */}
+      {error && (
+        <div className="mt-2 p-2 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+      
+      {/* Input Handles - Using React Flow's Handle component */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="input1"
+        style={{ 
+          background: '#6366f1',
+          width: '10px',
+          height: '10px',
+          border: '2px solid #6366f1',
+          top: '25%'
+        }}
+        isConnectable={isConnectable}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="input2"
+        style={{ 
+          background: '#6366f1',
+          width: '10px',
+          height: '10px',
+          border: '2px solid #6366f1',
+          left: '50%'
+        }}
+        isConnectable={isConnectable}
+      />
+      
+      {/* Output Handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output"
+        style={{ 
+          background: error ? '#ef4444' : '#f59e0b',
+          width: '10px',
+          height: '10px',
+          border: error ? '2px solid #ef4444' : '2px solid #f59e0b',
+          top: '25%'
+        }}
+        isConnectable={isConnectable}
+      />
+    </div>
   );
 };
 
