@@ -8,9 +8,12 @@
   - Flow-specific pages are organized under `/src/app/flow`
   - Test flow is separated in `/src/app/flow/test`
 - [x] Component organization
-  - All components are placed directly in `/src/components` without further categorization
-  - There's a large number of components (28+) in a flat structure
-  - No separation between node types, edge types, and UI components
+  - ✅ Components are now organized in subdirectories by type:
+    - `/src/components/nodes` for node components
+    - `/src/components/edges` for edge components
+    - `/src/components/ui` for UI components
+  - ✅ Barrel files provide a clean import/export pattern
+  - ✅ Improved maintainability with logical grouping
 - [x] Utility/helper functions
   - Limited utility functions, mostly contained within components
   - Custom hooks are properly separated in `/src/hooks`
@@ -21,6 +24,7 @@
 - [x] Base components
   - `BaseNode.tsx` serves as the foundation for custom nodes
   - `ClientOnlyReactFlow.tsx` handles client-side rendering of React Flow
+  - ⚠️ **IMPORTANT**: Avoid double wrapping components with `ReactFlowProvider`. Components using React Flow hooks should be wrapped exactly once with a provider.
 - [x] Custom node components
   - Multiple specialized node types (NumberInputNode, CostInputNode, CalculationNode, etc.)
   - All node components extend from BaseNode
@@ -46,10 +50,12 @@
 - [x] Module import organization
   - React and React Flow imports typically come first
   - Component imports follow
-  - No clear organization pattern for large import lists
+  - ✅ Implemented barrel files for cleaner imports
+  - ✅ Components can now be imported from a single location
 - [x] Export patterns
-  - Most components use default exports
-  - Some utilities and types use named exports
+  - Default exports used for components
+  - Named exports used for utilities and types
+  - ✅ Barrel files provide consistent export patterns
 - [x] Circular dependencies
   - No obvious circular dependencies detected
 
@@ -68,6 +74,15 @@
   - ~~**EXPLANATION**: `@xyflow/react` is the newer version of `reactflow` (rebranded), and mixing both could lead to confusion and potential conflicts~~
   - ✅ **RESOLVED**: The `reactflow` package has been removed from the dependencies, leaving only `@xyflow/react` (v12.4.4)
   - The application now exclusively uses `@xyflow/react`, which is the newer version of the React Flow library (rebranded from `reactflow`)
+- [x] Import path management
+  - ✅ **RESOLVED**: Fixed import paths in flow components to use relative paths instead of path aliases
+  - Path aliases (`@/components/*`) were causing module resolution issues in some environments
+  - Relative imports (`../../components/*`) provide more consistent behavior across different environments
+- [x] React Flow provider setup
+  - ✅ **RESOLVED**: Fixed "zustand provider as an ancestor" error by ensuring proper ReactFlowProvider usage
+  - Ensured that React Flow hooks are only used within components wrapped by ReactFlowProvider
+  - Implemented proper client-side only rendering for React Flow components to avoid SSR issues
+  - ⚠️ **IMPORTANT**: Double wrapping with `ReactFlowProvider` must be avoided. Always check if a component is already wrapped before adding another provider.
 
 ## 2. Custom Node Review
 
@@ -328,26 +343,27 @@
 ## 9. Summary and Recommendations
 
 ### 9.1 Strengths
-- **Modular Architecture**: The application has a well-structured component hierarchy with a clear separation of concerns. The BaseNode component provides a solid foundation for all custom nodes.
-- **Comprehensive Node Types**: The application includes a wide variety of node types for different purposes, from basic inputs to specialized data processing nodes.
-- **Robust Error Handling**: Each node type implements appropriate error handling and validation, preventing cascading failures in the calculation flow.
-- **Visual Feedback**: The application provides clear visual feedback for connections, calculations, and errors, enhancing the user experience.
-- **Flexible Edge Types**: Custom edge types with different styling and interaction options improve the visual representation of data flow.
-- **Calculation Propagation**: The useNodeCalculations hook efficiently manages data flow between nodes, ensuring that changes propagate correctly.
-- **Modern UI**: The application uses Tailwind CSS for consistent styling and modern UI components.
+- **Modular Architecture**: The application has a well-structured component hierarchy with the BaseNode component providing a solid foundation for all node types.
+- **Comprehensive Node Types**: A wide variety of node types are available for different purposes, from basic inputs to complex calculations.
+- **Robust Error Handling**: Each node type implements appropriate error handling and validation.
+- **Visual Feedback**: Clear visual feedback is provided for connections, calculations, and errors.
+- **Flexible Edge Types**: Custom edge types enhance the visual representation of data flow.
+- **Calculation Propagation**: The useNodeCalculations hook efficiently manages data flow between nodes.
+- **Modern UI**: Tailwind CSS is used for consistent styling throughout the application.
+- **✅ Improved Component Organization**: Components are now organized by type in subdirectories with barrel files for cleaner imports.
 
 ### 9.2 Areas for Improvement
-- **Component Organization**: The flat structure of components in a single directory makes navigation and maintenance challenging. A more hierarchical organization would improve code maintainability.
-- **Type Safety**: While TypeScript is used throughout the application, there's room for improvement in type definitions and enforcement, particularly in data flow between nodes.
+- **Type Safety**: The application could benefit from stricter type definitions and enforcement in data flow.
 - **Performance Optimization**: The application lacks specific optimizations for large flows or complex calculations, which could impact performance as the application scales.
 - **Documentation**: There's limited inline documentation explaining the purpose and usage of components, which could make onboarding new developers challenging.
 - **Testing**: No evidence of automated testing was found, which could lead to reliability issues as the application evolves.
+- **Provider Management**: The application has had issues with double wrapping components with `ReactFlowProvider`, which can cause unexpected behavior.
 
 ### 9.3 Recommendations
-1. **Refactor Component Organization**:
-   - Create subdirectories for different component types (nodes, edges, UI)
-   - Group related components together for better maintainability
-   - Consider implementing a barrel file pattern for cleaner imports
+1. **✅ Refactor Component Organization** (Resolved):
+   - ✅ Created subdirectories for different component types (nodes, edges, UI)
+   - ✅ Implemented barrel files for cleaner imports
+   - ✅ Organized components by type for better maintainability
 
 2. **Enhance Type Safety**:
    - Define stricter interfaces for node data types
@@ -358,32 +374,45 @@
    - ✅ The unused `reactflow` package has been removed
    - Audit and update other dependencies to ensure they're necessary and up-to-date
 
-4. **Improve Performance**:
+4. **✅ Import Path Management** (Resolved):
+   - ✅ Fixed import paths to use relative paths instead of path aliases
+   - ✅ Ensured consistent module resolution across different environments
+   - Consider implementing a more robust path alias configuration if needed
+
+5. **✅ React Flow Provider Setup** (Resolved):
+   - ✅ Fixed "zustand provider as an ancestor" error
+   - ✅ Implemented proper client-side only rendering for React Flow components
+   - ✅ Ensured React Flow hooks are only used within ReactFlowProvider context
+   - ⚠️ **IMPORTANT**: Always check for existing providers before adding a new one. Double wrapping with `ReactFlowProvider` causes the "zustand provider as an ancestor" error and should be strictly avoided.
+   - When modifying components, verify the component hierarchy to ensure there's exactly one `ReactFlowProvider` wrapping components that use React Flow hooks.
+   - Use dedicated wrapper components like `ClientReactFlowWithProvider` consistently to avoid provider duplication.
+
+6. **Improve Performance**:
    - Implement memoization for expensive calculations
    - Add virtualization for large flows
    - Optimize render cycles with React.memo and useCallback
 
-5. **Add Documentation**:
+7. **Add Documentation**:
    - Add JSDoc comments to components and functions
    - Create a README with usage examples
    - Document the data flow architecture
 
-6. **Implement Testing**:
+8. **Implement Testing**:
    - Add unit tests for individual components
    - Create integration tests for node interactions
    - Set up end-to-end tests for complete flows
 
-7. **Enhance User Experience**:
+9. **Enhance User Experience**:
    - Add snap-to-grid functionality for easier node positioning
    - Implement undo/redo functionality
    - Add keyboard shortcuts for common actions
 
-8. **Improve Error Handling**:
-   - Implement a centralized error tracking system
-   - Add more specific error messages for different scenarios
-   - Create a user-friendly error recovery mechanism
+10. **Improve Error Handling**:
+    - Implement a centralized error tracking system
+    - Add more specific error messages for different scenarios
+    - Create a user-friendly error recovery mechanism
 
-9. **Consider Accessibility**:
-   - Ensure the application is keyboard navigable
-   - Add ARIA attributes for screen readers
-   - Improve color contrast for better readability 
+11. **Consider Accessibility**:
+    - Ensure the application is keyboard navigable
+    - Add ARIA attributes for screen readers
+    - Improve color contrast for better readability 

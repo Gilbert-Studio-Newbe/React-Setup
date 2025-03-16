@@ -2,7 +2,7 @@
 
 import React, { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { Handle, Position, NodeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
-import useIsomorphicLayoutEffect from '../hooks/useIsomorphicLayoutEffect';
+import useIsomorphicLayoutEffect from '../../hooks/useIsomorphicLayoutEffect';
 
 interface DebugDisplayNodeData {
   label?: string;

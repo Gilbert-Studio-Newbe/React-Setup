@@ -20,46 +20,52 @@ import {
   OnConnect,
 } from '@xyflow/react';
 import dynamic from 'next/dynamic';
-import ClientReactFlowWithProvider from '../../components/ClientOnlyReactFlow';
 
-// Import ContextNodeMenu with dynamic import to prevent SSR
-const ContextNodeMenu = dynamic(
-  () => import('../../components/ContextNodeMenu'),
-  { ssr: false }
-);
-
-// Import DynamicJsonParameterFormatterNode with dynamic import
-const DynamicJsonParameterFormatterNode = dynamic(
-  () => import('../../components/DynamicJsonParameterFormatterNode'),
-  { ssr: false }
-);
-
+// Import initial elements
 import {
   nodes as initialNodes,
   edges as initialEdges,
 } from '../../components/initial-elements';
-// Import only the edge types we'll actually use
-import ButtonEdge from '../../components/ButtonEdge';
-import AnimatedEdge from '../../components/AnimatedEdge';
-import StyledEdge from '../../components/StyledEdge';
-import Toast from '../../components/Toast';
-import HelpPanel from '../../components/HelpPanel';
-import NumberInputNode from '../../components/NumberInputNode';
-import CostInputNode from '../../components/CostInputNode';
-import CalculationNode from '../../components/CalculationNode';
-import KeyboardShortcuts from '../../components/KeyboardShortcuts';
-import SelectionTracker from '../../components/SelectionTracker';
-import FlowToolbar from '../../components/FlowToolbar';
-import TailwindNode from '../../components/TailwindNode';
-import ResultNode from '../../components/ResultNode';
-import IfcImportNode from '../../components/IfcImportNode';
-import JsonLoadNode from '../../components/JsonLoadNode';
-import JsonDisplayNode from '../../components/JsonDisplayNode';
-// Import the client-only version instead of the regular one
-import ClientOnlyDebugDisplayNode from '../../components/ClientOnlyDebugDisplayNode';
-import JoinNode from '../../components/JoinNode';
-import CSVImportNode from '../../components/CSVImportNode';
-import MaterialCostNode from '../../components/MaterialCostNode';
+
+// Import edge components
+import ButtonEdge from '../../components/edges/ButtonEdge';
+import AnimatedEdge from '../../components/edges/AnimatedEdge';
+import StyledEdge from '../../components/edges/StyledEdge';
+
+// Import UI components
+import Toast from '../../components/ui/Toast';
+import HelpPanel from '../../components/ui/HelpPanel';
+import KeyboardShortcuts from '../../components/ui/KeyboardShortcuts';
+import SelectionTracker from '../../components/ui/SelectionTracker';
+import FlowToolbar from '../../components/ui/FlowToolbar';
+import ClientReactFlowWithProvider from '../../components/ui/ClientOnlyReactFlow';
+import { useIsInsideReactFlowProvider } from '../../components/ui/ClientOnlyReactFlow';
+import { SafeReactFlowProvider } from '../../components/ui';
+
+// Import node components
+import NumberInputNode from '../../components/nodes/NumberInputNode';
+import CostInputNode from '../../components/nodes/CostInputNode';
+import CalculationNode from '../../components/nodes/CalculationNode';
+import TailwindNode from '../../components/nodes/TailwindNode';
+import ResultNode from '../../components/nodes/ResultNode';
+import IfcImportNode from '../../components/nodes/IfcImportNode';
+import JsonLoadNode from '../../components/nodes/JsonLoadNode';
+import JsonDisplayNode from '../../components/nodes/JsonDisplayNode';
+import ClientOnlyDebugDisplayNode from '../../components/nodes/ClientOnlyDebugDisplayNode';
+import JoinNode from '../../components/nodes/JoinNode';
+import CSVImportNode from '../../components/nodes/CSVImportNode';
+import MaterialCostNode from '../../components/nodes/MaterialCostNode';
+
+// Import components with dynamic import to prevent SSR issues
+const ContextNodeMenu = dynamic(
+  () => import('../../components/ui/ContextNodeMenu'),
+  { ssr: false }
+);
+
+const DynamicJsonParameterFormatterNode = dynamic(
+  () => import('../../components/nodes/DynamicJsonParameterFormatterNode'),
+  { ssr: false }
+);
 
 // Only keep the edge types we need
 const edgeTypes = {
@@ -238,6 +244,20 @@ const LoadingFallback = () => (
 );
 
 function Flow() {
+  // Add a console log to check if the component is being rendered
+  console.log('Flow component rendering');
+  
+  // Check if we're inside a ReactFlowProvider
+  const isInsideProvider = useIsInsideReactFlowProvider();
+  console.log('Is inside ReactFlowProvider:', isInsideProvider);
+  
+  // If we're not inside a provider, show a warning
+  useEffect(() => {
+    if (!isInsideProvider) {
+      console.error('Flow component is NOT inside a ReactFlowProvider. This will cause the "zustand provider as an ancestor" error.');
+    }
+  }, [isInsideProvider]);
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [toast, setToast] = useState<{ message: string } | null>(null);
@@ -921,7 +941,6 @@ function Flow() {
                       }
                     };
                   }
-                }
               }
               return node;
             })
@@ -1020,7 +1039,6 @@ function Flow() {
                     }
                   };
                 }
-              }
             }
             return node;
           })
@@ -1635,53 +1653,31 @@ function Flow() {
 
   return (
     <div className="w-full h-screen">
-      <ClientReactFlowWithProvider
+      <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeDragStart={handleNodeDragStart}
+        onNodeDoubleClick={handleDoubleClick}
+        onPaneDoubleClick={handleDoubleClick}
+        onPaneClick={handleDoubleClick}
         onNodeDragStop={handleNodeDragStop}
-        onPaneClick={(event) => {
-          // Close context menu when clicking elsewhere on the pane
-          if (contextMenu.visible) {
-            setContextMenu({ ...contextMenu, visible: false });
-          }
-        }}
-        onPaneContextMenu={(event) => {
-          // Prevent default context menu
-          event.preventDefault();
-          
-          // Show our custom context menu at the mouse position
-          setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            visible: true
-          });
-        }}
-        onDoubleClick={handleDoubleClick}
-        deleteKeyCode="Delete"
-        fitView
-        snapToGrid={true}
-        snapGrid={[20, 20]}
-        zoomOnDoubleClick={false}
-        zoomOnScroll={true}
-        panOnScroll={false}
-        panOnDrag={true}
-        attributionPosition="bottom-left"
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        connectionLineType={ConnectionLineType.Step}
-        connectionLineStyle={{ stroke: edgeColor, strokeWidth: 1.5 }}
-        className="bg-[#F7F9FB] dark:bg-[#1a1a1a]"
-        defaultEdgeOptions={{ 
-          type: edgeAnimated ? 'animated' : undefined,
-          style: { strokeWidth: 1.5, stroke: edgeColor },
-          data: { 
-            offset: 15, 
-            borderRadius: 8,
-            type: 'step' // Force step type for square edges with rounded corners
+        onSelectionDragStop={handleSelectionChange}
+        onEdgeUpdate={handleEdgeTypeChange}
+        onEdgeUpdateStart={handleEdgeTypeChange}
+        onEdgeUpdateEnd={handleEdgeTypeChange}
+        connectionLineType={ConnectionLineType.Bezier}
+        defaultEdgeOptions={{
+          type: 'default',
+          style: { strokeWidth: 1.5, stroke: '#757575' },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#757575',
+            width: 20,
+            height: 20,
           }
         }}
       >
@@ -1713,7 +1709,7 @@ function Flow() {
             }}
           />
         )}
-      </ClientReactFlowWithProvider>
+      </ReactFlow>
       
       {/* UI Components */}
       <FlowToolbar className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10" onAction={handleAction} />
@@ -1752,7 +1748,9 @@ export default function FlowPage() {
 
   return (
     <ClientErrorBoundary>
-      <Flow />
+      <SafeReactFlowProvider>
+        <Flow />
+      </SafeReactFlowProvider>
     </ClientErrorBoundary>
   );
 } 

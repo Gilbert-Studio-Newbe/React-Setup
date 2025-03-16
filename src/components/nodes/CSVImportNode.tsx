@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { NodeProps, useReactFlow } from '@xyflow/react';
 import BaseNode, { BaseNodeData } from './BaseNode';
-import Papa from 'papaparse';
 
 // Extend BaseNodeData with CSV-specific properties
 interface CSVImportNodeData extends BaseNodeData {
@@ -28,6 +27,50 @@ const defaultData: CSVImportNodeData = {
   isLoading: false,
   isCollapsed: false,
   outputValue: null
+};
+
+// Simple CSV parser function
+const parseCSV = (csvText: string, hasHeader = true): { data: any[], headers: string[], errors: any[] } => {
+  try {
+    const lines = csvText.split(/\r\n|\n/);
+    if (lines.length === 0) {
+      return { data: [], headers: [], errors: [{ message: 'Empty CSV file' }] };
+    }
+
+    // Parse headers
+    const headers = hasHeader ? lines[0].split(',').map(h => h.trim()) : [];
+    
+    // Parse data rows
+    const data = [];
+    const startRow = hasHeader ? 1 : 0;
+    
+    for (let i = startRow; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue; // Skip empty lines
+      
+      const values = line.split(',').map(v => v.trim());
+      
+      if (hasHeader) {
+        // Create object with header keys
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        data.push(row);
+      } else {
+        // Just use array of values
+        data.push(values);
+      }
+    }
+    
+    return { data, headers, errors: [] };
+  } catch (error) {
+    return { 
+      data: [], 
+      headers: [], 
+      errors: [{ message: error instanceof Error ? error.message : 'Unknown error parsing CSV' }] 
+    };
+  }
 };
 
 const CSVImportNode: React.FC<NodeProps<CSVImportNodeData>> = ({ data = defaultData, isConnectable, id }) => {
@@ -85,18 +128,21 @@ const CSVImportNode: React.FC<NodeProps<CSVImportNodeData>> = ({ data = defaultD
     setError('');
     setFileName(file.name);
     
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
+    // Read file as text
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csvText = e.target?.result as string;
+        const results = parseCSV(csvText, true);
+        
         if (results.errors && results.errors.length > 0) {
           setError(`Error parsing CSV: ${results.errors[0].message}`);
           setIsLoading(false);
           return;
         }
         
-        const data = results.data as any[];
-        const headers = results.meta.fields || [];
+        const data = results.data;
+        const headers = results.headers;
         const previewRows = data.slice(0, 5); // Show first 5 rows as preview
         
         setCsvData(data);
@@ -104,12 +150,18 @@ const CSVImportNode: React.FC<NodeProps<CSVImportNodeData>> = ({ data = defaultD
         setRowCount(data.length);
         setPreviewRows(previewRows);
         setIsLoading(false);
-      },
-      error: (error) => {
-        setError(`Error parsing CSV: ${error.message}`);
+      } catch (error) {
+        setError(`Error parsing CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setIsLoading(false);
       }
-    });
+    };
+    
+    reader.onerror = () => {
+      setError('Error reading file');
+      setIsLoading(false);
+    };
+    
+    reader.readAsText(file);
   }, []);
 
   // Handle file input change

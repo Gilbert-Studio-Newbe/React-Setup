@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
-  ReactFlow,
-  ReactFlowProvider,
   MiniMap,
   Controls,
   Background,
@@ -11,39 +9,23 @@ import {
   useEdgesState,
   addEdge,
   Connection,
-  Edge,
-  Node,
   ConnectionLineType,
   MarkerType,
-  Panel
+  Panel,
+  ReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-// Import custom node types
-import NumberInputNode from '../../../components/NumberInputNode';
-import CostInputNode from '../../../components/CostInputNode';
-import CalculationNode from '../../../components/CalculationNode';
-import ResultNode from '../../../components/ResultNode';
-import TailwindNode from '../../../components/TailwindNode';
-import IfcImportNode from '../../../components/IfcImportNode';
-import JsonLoadNode from '../../../components/JsonLoadNode';
-import JsonDisplayNode from '../../../components/JsonDisplayNode';
-import ClientOnlyDebugDisplayNode from '../../../components/ClientOnlyDebugDisplayNode';
-import JoinNode from '../../../components/JoinNode';
-import CSVImportNode from '../../../components/CSVImportNode';
-import MaterialCostNode from '../../../components/MaterialCostNode';
-import JsonParameterFormatterNode from '../../../components/JsonParameterFormatterNode';
-
-// Import custom edge types
-import StyledEdge from '../../../components/StyledEdge';
-import ButtonEdge from '../../../components/ButtonEdge';
-import AnimatedEdge from '../../../components/AnimatedEdge';
-
-// Import NodeSelector
-import NodeSelector from '../../../components/NodeSelector';
-
-// Import our custom hook for calculations
-import useNodeCalculations from './useNodeCalculations';
+// Import components using barrel files
+import {
+  NumberInputNode,
+  CostInputNode,
+  CalculationNode,
+  ResultNode,
+  StyledEdge,
+  NodeSelector,
+  SafeReactFlowProvider
+} from '../../../components';
 
 // Define node types
 const nodeTypes = {
@@ -51,26 +33,15 @@ const nodeTypes = {
   costinput: CostInputNode,
   calculation: CalculationNode,
   result: ResultNode,
-  tailwind: TailwindNode,
-  ifcimport: IfcImportNode,
-  jsonload: JsonLoadNode,
-  jsondisplay: JsonDisplayNode,
-  debugdisplay: ClientOnlyDebugDisplayNode,
-  join: JoinNode,
-  csvimport: CSVImportNode,
-  materialcost: MaterialCostNode,
-  jsonparameterformatter: JsonParameterFormatterNode,
 };
 
 // Define edge types
 const edgeTypes = {
   default: StyledEdge,
-  button: ButtonEdge,
-  animated: AnimatedEdge,
 };
 
-// Create initial nodes with built-in types and custom types
-const initialNodes: Node[] = [
+// Create initial nodes
+const initialNodes = [
   // Row 1: Input nodes
   {
     id: 'numberinput-1',
@@ -147,27 +118,19 @@ const initialNodes: Node[] = [
 ];
 
 // Create connections between nodes
-const initialEdges: Edge[] = [
+const initialEdges = [
   // Connect inputs to first calculation
   { 
     id: 'e1-3', 
     source: 'numberinput-1', 
     target: 'calculation-1',
     type: 'default',
-    data: {
-      color: '#6366f1',
-      strokeWidth: 2
-    }
   },
   { 
     id: 'e2-3', 
     source: 'numberinput-2', 
     target: 'calculation-1',
     type: 'default',
-    data: {
-      color: '#6366f1',
-      strokeWidth: 2
-    }
   },
   
   // Connect first calculation and cost input to second calculation
@@ -176,20 +139,12 @@ const initialEdges: Edge[] = [
     source: 'calculation-1', 
     target: 'calculation-2',
     type: 'default',
-    data: {
-      color: '#f59e0b',
-      strokeWidth: 2
-    }
   },
   { 
     id: 'e5-4', 
     source: 'costinput-1', 
     target: 'calculation-2',
     type: 'default',
-    data: {
-      color: '#f59e0b',
-      strokeWidth: 2
-    }
   },
   
   // Connect second calculation to result
@@ -197,11 +152,7 @@ const initialEdges: Edge[] = [
     id: 'e4-6', 
     source: 'calculation-2', 
     target: 'result-1',
-    type: 'animated',
-    data: {
-      color: '#10b981',
-      strokeWidth: 2
-    }
+    type: 'default',
   },
 ];
 
@@ -209,93 +160,32 @@ function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Use our custom hook for calculations
-  const { 
-    updateCalculations,
-    onNodesChange: calculationNodesChange,
-    onEdgesChange: calculationEdgesChange,
-    onConnect: calculationConnect
-  } = useNodeCalculations();
-
-  // Combine the standard handlers with our calculation handlers
-  const handleNodesChange = useCallback((changes: any) => {
-    onNodesChange(changes);
-    calculationNodesChange(changes);
-  }, [onNodesChange, calculationNodesChange]);
-
-  const handleEdgesChange = useCallback((changes: any) => {
-    onEdgesChange(changes);
-    calculationEdgesChange(changes);
-  }, [onEdgesChange, calculationEdgesChange]);
-
-  const handleConnect = useCallback(
+  const onConnect = useCallback(
     (params: Connection) => {
-      const newEdge = {
-        ...params,
-        type: 'default',
-        data: {
-          color: '#6366f1',
-          strokeWidth: 2
-        }
-      };
-      setEdges((eds) => addEdge(newEdge, eds));
-      calculationConnect(params);
+      setEdges((eds) => addEdge(params, eds));
     },
-    [setEdges, calculationConnect]
+    [setEdges]
   );
-
-  // Run calculations when the component mounts
-  useEffect(() => {
-    updateCalculations();
-  }, [updateCalculations]);
-
-  // Handle input value changes
-  const handleNodeDataChange = useCallback((nodeId: string, newData: any) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === nodeId) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              ...newData,
-            },
-          };
-        }
-        return node;
-      })
-    );
-    
-    // Update calculations after data changes
-    setTimeout(() => {
-      updateCalculations();
-    }, 0);
-  }, [setNodes, updateCalculations]);
 
   return (
     <div style={{ width: '100%', height: '100vh' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={handleEdgesChange}
-        onConnect={handleConnect}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        connectionLineType={ConnectionLineType.SmoothStep}
         defaultEdgeOptions={{
           type: 'default',
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-          },
         }}
         fitView
       >
+        <Background />
         <Controls />
         <MiniMap />
-        <Background />
         
-        {/* Add NodeSelector in the top right corner */}
         <Panel position="top-right" className="m-4">
           <NodeSelector />
         </Panel>
@@ -306,8 +196,8 @@ function Flow() {
 
 export default function ClientTestFlow() {
   return (
-    <ReactFlowProvider>
+    <SafeReactFlowProvider>
       <Flow />
-    </ReactFlowProvider>
+    </SafeReactFlowProvider>
   );
 } 
