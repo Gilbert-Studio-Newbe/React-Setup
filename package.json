@@ -9,10 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@geist-ui/core": "^2.3.8",
     "@types/papaparse": "^5.3.15",
     "@xyflow/react": "^12.4.4",
     "autoprefixer": "^10.4.21",
-    "next": "15.2.2",
+    "d3-zoom": "^3.0.0",
+    "next": "^14.1.0",
     "papaparse": "^5.5.2",
     "postcss": "^8.5.3",
     "react": "^18.3.1",

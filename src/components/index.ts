@@ -4,4 +4,5 @@ export * from './edges';
 export * from './ui';
 
 // Export initial elements
-export { nodes as initialNodes, edges as initialEdges } from './initial-elements'; 
+export { nodes as initialNodes, edges as initialEdges } from './initial-elements';
+export { nodes, edges } from './initial-elements'; 
