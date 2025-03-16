@@ -310,6 +310,8 @@ const CalculationNode: React.FC<NodeProps<CalculationNodeData>> = ({ data = defa
       }}
       isConnectable={isConnectable}
       error={error}
+      // Specify fixed dimensions for the Calculation node that align with the grid
+      nodeSize={{ width: 320, height: 360 }}
       handles={{
         inputs: [
           { 

@@ -119,13 +119,18 @@ const JoinNode: React.FC<NodeProps<JoinNodeData>> = ({ data = defaultData, isCon
 
   return (
     <BaseNode<JoinNodeData>
-      data={data}
+      data={{
+        ...data,
+        label: data.label || 'Join String'
+      }}
       isConnectable={isConnectable}
+      // Specify fixed dimensions for the Join node that align with the grid
+      nodeSize={{ width: 280, height: 320 }}
       handles={{
         inputs: [
           { 
             id: 'input1', 
-            position: 30, 
+            position: 30,
             style: { 
               background: '#6366f1',
               border: '2px solid #6366f1',
@@ -135,7 +140,7 @@ const JoinNode: React.FC<NodeProps<JoinNodeData>> = ({ data = defaultData, isCon
           },
           { 
             id: 'input2', 
-            position: 70, 
+            position: 70,
             style: { 
               background: '#6366f1',
               border: '2px solid #6366f1',

@@ -95,3 +95,8 @@ body {
 .react-flow__node-toolbar {
   display: none;
 }
+
+/* Ensure nodes snap to grid when dragged */
+.react-flow__node {
+  transition: none !important;
+}

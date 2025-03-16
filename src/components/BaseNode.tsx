@@ -26,6 +26,11 @@ interface BaseNodeProps<T extends BaseNodeData> extends NodeProps<T> {
       style?: React.CSSProperties;
     }>;
   };
+  // Add a nodeSize prop to allow specifying fixed dimensions for different node types
+  nodeSize?: {
+    width: number;
+    height: number;
+  };
 }
 
 export const BaseNode = <T extends BaseNodeData>({ 
@@ -36,25 +41,36 @@ export const BaseNode = <T extends BaseNodeData>({
   handles = {
     inputs: [{ id: 'input', position: 50 }],
     outputs: [{ id: 'output', position: 50 }]
-  }
+  },
+  // Default node size that aligns with the grid (multiple of 40px)
+  nodeSize = { width: 280, height: 200 }
 }: BaseNodeProps<T>) => {
   return (
-    <div className={`
-      relative p-4 rounded-lg border-2 
-      ${error ? 'border-red-400' : 'border-gray-300'} 
-      bg-white dark:bg-gray-800 
-      shadow-md w-[280px] 
-      transition-all duration-200 
-      hover:shadow-lg
-      ${error ? 'dark:border-red-600' : 'dark:border-gray-600'}
-    `}>
+    <div 
+      className={`
+        relative p-4 rounded-lg border-2 
+        ${error ? 'border-red-400' : 'border-gray-300'} 
+        bg-white dark:bg-gray-800 
+        shadow-md
+        transition-all duration-200 
+        hover:shadow-lg
+        ${error ? 'dark:border-red-600' : 'dark:border-gray-600'}
+      `}
+      style={{
+        width: `${nodeSize.width}px`,
+        height: `${nodeSize.height}px`,
+        boxSizing: 'border-box',
+      }}
+    >
       {/* Title */}
       <div className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">
         {data?.label || 'Base'}
       </div>
 
       {/* Content */}
-      {children}
+      <div className="overflow-auto" style={{ maxHeight: `${nodeSize.height - 80}px` }}>
+        {children}
+      </div>
 
       {/* Error Display */}
       {error && (

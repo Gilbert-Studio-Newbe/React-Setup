@@ -82,6 +82,7 @@ const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, s
       }}
       isConnectable={true}
       error={error}
+      nodeSize={{ width: 280, height: 200 }}
       handles={{
         outputs: [
           { 
