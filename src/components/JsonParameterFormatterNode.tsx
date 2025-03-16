@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import BaseNode, { BaseNodeData } from './BaseNode';
 
 // Define interfaces
 interface Parameter {
@@ -24,7 +25,7 @@ interface SelectedParameter {
   convertToMillimeters?: boolean;
 }
 
-interface JsonParameterFormatterNodeData {
+interface JsonParameterFormatterNodeData extends BaseNodeData {
   label?: string;
   jsonData?: JsonData | null;
   selectedParameters?: SelectedParameter[];
@@ -210,6 +211,13 @@ const JsonParameterFormatterNode = ({ data, isConnectable }: NodeProps) => {
   const selectedParameters = nodeData.selectedParameters || [];
   const isParametersVisible = nodeData.isParametersVisible !== undefined ? nodeData.isParametersVisible : true;
   const toggleParametersVisibility = nodeData.toggleParametersVisibility;
+  
+  // Log the jsonData for debugging
+  console.log('JsonParameterFormatterNode: Rendering with data', { 
+    hasJsonData: jsonData ? true : false,
+    parametersCount: jsonData?.parameters?.length || 0,
+    selectedParametersCount: selectedParameters.length
+  });
   
   return (
     <div className="relative p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md" style={{ minWidth: '300px', width: 'auto', minHeight: '120px' }}>

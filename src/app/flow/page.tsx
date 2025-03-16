@@ -754,8 +754,18 @@ function Flow() {
       
       // If connecting to a JSON Parameter Formatter node, pass JSON data
       if (targetNode?.type === 'jsonparameterformatter' && sourceNode) {
-        // Check if the source node has JSON data
+        console.log('Flow: Connecting to JsonParameterFormatterNode', {
+          targetNodeId: targetNode.id,
+          sourceNodeId: sourceNode.id,
+          sourceNodeType: sourceNode.type,
+          hasJsonData: sourceNode.data.jsonData ? true : false,
+          targetHandle: params.targetHandle,
+          sourceHandle: params.sourceHandle
+        });
+        
+        // Check if the source node has JSON data, regardless of target handle
         if (sourceNode.data.jsonData) {
+          console.log('Flow: Source node has JSON data, updating target node');
           setNodes(nds => 
             nds.map(node => {
               if (node.id === targetNode.id) {
@@ -770,6 +780,8 @@ function Flow() {
               return node;
             })
           );
+        } else {
+          console.log('Flow: Source node does not have JSON data');
         }
       }
       

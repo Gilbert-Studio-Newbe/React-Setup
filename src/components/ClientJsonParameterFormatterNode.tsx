@@ -115,8 +115,8 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
       // Get value, applying conversion if needed
       let value = param.value;
       if (selectedParam.convertToMillimeters && param.valueType === 'length' && typeof value === 'number') {
-        // Assuming the value is already in mm, but you could add conversion logic here if needed
-        value = value;
+        // Convert to millimeters by multiplying by 1000 (assuming input is in meters)
+        value = value * 1000;
       }
       
       // Extract numeric dimension value if not already found
@@ -230,14 +230,36 @@ const ClientJsonParameterFormatterNode = (props: NodeProps) => {
     // Find edges where this node is the target
     const incomingEdges = edges.filter(edge => edge.target === id);
     
+    console.log('JsonParameterFormatterNode: Checking incoming edges', { 
+      nodeId: id, 
+      incomingEdgesCount: incomingEdges.length,
+      incomingEdges
+    });
+    
     // Process each incoming edge
     incomingEdges.forEach(edge => {
       const sourceNode = nodes.find(node => node.id === edge.source);
+      console.log('JsonParameterFormatterNode: Source node', { 
+        sourceNodeId: sourceNode?.id,
+        sourceNodeType: sourceNode?.type,
+        hasJsonData: sourceNode?.data?.jsonData ? true : false,
+        targetHandle: edge.targetHandle,
+        sourceHandle: edge.sourceHandle
+      });
+      
+      // Accept connections to any handle if the source node has JSON data
       if (sourceNode && sourceNode.data.jsonData) {
         // Update JSON data if it's different
         if (JSON.stringify(sourceNode.data.jsonData) !== JSON.stringify(jsonData)) {
+          console.log('JsonParameterFormatterNode: Updating JSON data from source node');
           setJsonData(sourceNode.data.jsonData);
+        } else {
+          console.log('JsonParameterFormatterNode: JSON data unchanged');
         }
+      } else if (!sourceNode) {
+        console.log('JsonParameterFormatterNode: Source node not found');
+      } else if (!sourceNode.data.jsonData) {
+        console.log('JsonParameterFormatterNode: Source node has no JSON data');
       }
     });
   }, [id, getEdges, getNodes, jsonData]);
