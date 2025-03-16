@@ -28,6 +28,12 @@ const ContextNodeMenu = dynamic(
   { ssr: false }
 );
 
+// Import DynamicJsonParameterFormatterNode with dynamic import
+const DynamicJsonParameterFormatterNode = dynamic(
+  () => import('@/components/DynamicJsonParameterFormatterNode'),
+  { ssr: false }
+);
+
 import {
   nodes as initialNodes,
   edges as initialEdges,
@@ -53,7 +59,6 @@ import DebugDisplayNode from '@/components/DebugDisplayNode';
 import JoinNode from '@/components/JoinNode';
 import CSVImportNode from '@/components/CSVImportNode';
 import MaterialCostNode from '@/components/MaterialCostNode';
-import JsonParameterFormatterNode from '@/components/JsonParameterFormatterNode';
 
 // Only keep the edge types we need
 const edgeTypes = {
@@ -76,7 +81,7 @@ const nodeTypes = {
   join: JoinNode,
   csvimport: CSVImportNode,
   materialcost: MaterialCostNode,
-  jsonparameterformatter: JsonParameterFormatterNode
+  jsonparameterformatter: DynamicJsonParameterFormatterNode
 } as any; // Using 'any' to bypass type checking for nodeTypes
 
 const nodeClassName = (node: any) => node.type;
@@ -419,25 +424,22 @@ function Flow() {
         };
         break;
       case 'jsonparameterformatter':
-        const formatterLabel = prompt('Enter a label for the Parameter Formatter node:', 'Parameter Formatter');
-        const actualFormatterLabel = formatterLabel || 'Parameter Formatter';
-        
         data = {
-          label: actualFormatterLabel,
+          label: 'Parameter Formatter',
           jsonData: null,
           selectedParameters: [
-            { paramId: null, order: 0, customLabel: '' },
-            { paramId: null, order: 1, customLabel: '' },
-            { paramId: null, order: 2, customLabel: '' },
-            { paramId: null, order: 3, customLabel: '' },
-            { paramId: null, order: 4, customLabel: '' }
+            { paramId: null, order: 0, customLabel: '', convertToMillimeters: false },
+            { paramId: null, order: 1, customLabel: '', convertToMillimeters: false },
+            { paramId: null, order: 2, customLabel: '', convertToMillimeters: false },
+            { paramId: null, order: 3, customLabel: '', convertToMillimeters: false },
+            { paramId: null, order: 4, customLabel: '', convertToMillimeters: false }
           ],
-          dimensionParameter: null,
           formatTemplate: '**{label}**, {value};',
           trimWhitespace: true,
           handleNullValues: 'skip',
           formattedString: '',
-          dimensionValue: null
+          dimensionValue: 0,
+          dimensionOutputMode: 'raw'
         };
         break;
       case 'result':
