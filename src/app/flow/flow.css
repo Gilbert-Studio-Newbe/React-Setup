@@ -8,15 +8,14 @@
 }
 
 .react-flow__node {
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 10px;
   background-color: white;
   color: #333;
-  border: 1px solid #ddd;
-  width: 180px;
-  font-size: 14px;
+  border: 2px solid #ddd;
+  width: 150px;
+  font-size: 12px;
   text-align: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .react-flow__node.selected {
@@ -27,15 +26,15 @@
 .react-flow__handle {
   width: 8px;
   height: 8px;
-  background-color: #3498db;
+  background-color: #1a192b;
 }
 
 .react-flow__handle:hover {
-  background-color: #2980b9;
+  background-color: #ff0072;
 }
 
 .react-flow__edge-path {
-  stroke: #3498db;
+  stroke: #1a192b;
   stroke-width: 2;
 }
 
@@ -51,7 +50,7 @@
 }
 
 .react-flow__controls {
-  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.1);
 }
 
 .react-flow__minimap {
@@ -59,7 +58,7 @@
 }
 
 .react-flow__background {
-  background-color: #f5f5f5;
+  background-color: #f8f8f8;
 }
 
 /* Add Node Button styles */
@@ -67,12 +66,11 @@
   background-color: #3498db;
   color: white;
   border: none;
-  padding: 8px 16px;
   border-radius: 4px;
-  font-size: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
   cursor: pointer;
   transition: background-color 0.2s;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .add-node-button:hover {

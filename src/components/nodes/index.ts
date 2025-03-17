@@ -15,4 +15,26 @@ export { default as CSVImportNode } from './CSVImportNode';
 export { default as MaterialCostNode } from './MaterialCostNode';
 export { default as JsonParameterFormatterNode } from './JsonParameterFormatterNode';
 export { default as ClientJsonParameterFormatterNode } from './ClientJsonParameterFormatterNode';
-export { default as DynamicJsonParameterFormatterNode } from './DynamicJsonParameterFormatterNode'; 
+export { default as DynamicJsonParameterFormatterNode } from './DynamicJsonParameterFormatterNode';
+export { default as SimpleCalculatorNode } from './SimpleCalculatorNode';
+export { default as DebugNode } from './DebugNode';
+
+// Export node data types
+export type { NumberInputNodeData } from './NumberInputNode';
+export type { SimpleCalculatorNodeData } from './SimpleCalculatorNode';
+export type { DebugNodeData } from './DebugNode';
+export type { CostInputNodeData } from './CostInputNode';
+export type { CalculationNodeData } from './CalculationNode';
+export type { ResultNodeData } from './ResultNode';
+export type { TailwindNodeData } from './TailwindNode';
+export type { IfcImportNodeData } from './IfcImportNode';
+export type { JsonLoadNodeData } from './JsonLoadNode';
+export type { JsonDisplayNodeData } from './JsonDisplayNode';
+export type { DebugDisplayNodeData } from './DebugDisplayNode';
+export type { ClientOnlyDebugDisplayNodeData } from './ClientOnlyDebugDisplayNode';
+export type { JoinNodeData } from './JoinNode';
+export type { CSVImportNodeData } from './CSVImportNode';
+export type { MaterialCostNodeData } from './MaterialCostNode';
+export type { JsonParameterFormatterNodeData } from './JsonParameterFormatterNode';
+export type { ClientJsonParameterFormatterNodeData } from './ClientJsonParameterFormatterNode';
+export type { DynamicJsonParameterFormatterNodeData } from './DynamicJsonParameterFormatterNode'; 

@@ -1,157 +1,135 @@
-'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Handle, Position, useNodeId } from '@xyflow/react';
+import { useReactFlow } from '@xyflow/react';
 
-import React, { useState, useEffect } from 'react';
-import { Handle, Position, useReactFlow, NodeProps } from '@xyflow/react';
-import BaseNode, { BaseNodeData } from './BaseNode';
-
-interface NumberInputNodeData extends BaseNodeData {
-  value?: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  unit?: string;
+// Define the data structure for the number input node
+interface NumberInputNodeData {
+  value: number;
+  result: number;
 }
 
-const NumberInputNode: React.FC<NodeProps<NumberInputNodeData>> = ({ id, data, selected }) => {
-  // Set default values if not provided
-  const label = data.label || 'Number Input';
-  const min = data.min !== undefined ? data.min : 0;
-  const max = data.max !== undefined ? data.max : 1000;
-  const step = data.step || 1;
-  const unit = data.unit || '';
-  
-  // Local state for the input value
-  const [value, setValue] = useState<number>(data.value !== undefined ? data.value : 0);
+// The NumberInputNode component
+export default function NumberInputNode({ data }: { data: NumberInputNodeData }) {
+  const nodeId = useNodeId();
   const { setNodes } = useReactFlow();
-  const [error, setError] = useState<string>('');
+  const isInitialRender = useRef(true);
+  const previousValue = useRef<number | null>(null);
+  
+  // Local state to prevent unnecessary re-renders
+  const [value, setValue] = useState<number>(data?.value || 0);
+  
+  // Initialize the value from data on first render
+  useEffect(() => {
+    if (isInitialRender.current) {
+      setValue(data?.value || 0);
+      isInitialRender.current = false;
+    }
+  }, [data?.value]);
   
   // Update the node data when the value changes
-  const updateNodeData = (newValue: number) => {
-    setValue(newValue);
-    setNodes(nodes => 
-      nodes.map(node => {
-        if (node.id === id) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              value: newValue,
-              outputValue: newValue
-            }
-          };
-        }
-        return node;
-      })
-    );
-  };
+  const updateNodeData = useCallback((newValue: number) => {
+    // Only update if the value has actually changed
+    if (previousValue.current !== newValue) {
+      previousValue.current = newValue;
+      
+      setNodes(nodes => 
+        nodes.map(node => {
+          if (node.id === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                value: newValue,
+                result: newValue
+              }
+            };
+          }
+          return node;
+        })
+      );
+    }
+  }, [nodeId, setNodes]);
   
   // Handle input change
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value);
-    if (isNaN(newValue)) {
-      setError('Please enter a valid number');
-      return;
-    }
-    setError('');
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseFloat(e.target.value) || 0;
+    setValue(newValue);
     updateNodeData(newValue);
-  };
+  }, [updateNodeData]);
   
-  // Handle increment/decrement buttons
-  const handleIncrement = () => {
-    const newValue = Math.min(value + step, max);
-    updateNodeData(newValue);
-  };
-  
-  const handleDecrement = () => {
-    const newValue = Math.max(value - step, min);
-    updateNodeData(newValue);
-  };
-  
-  // Update local state if data.value changes externally
+  // Update node data when value changes
   useEffect(() => {
-    if (data.value !== undefined && data.value !== value) {
-      setValue(data.value);
+    if (!isInitialRender.current) {
+      updateNodeData(value);
     }
-  }, [data.value]);
+  }, [value, updateNodeData]);
   
   return (
-    <BaseNode<NumberInputNodeData>
-      data={{
-        ...data,
-        label: label
-      }}
-      isConnectable={true}
-      error={error}
-      nodeSize={{ width: 280, height: 200 }}
-      handles={{
-        outputs: [
-          { 
-            id: 'output', 
-            position: 50,
-            style: { 
-              background: '#f59e0b',
-              border: '2px solid #f59e0b',
-              width: '10px',
-              height: '10px'
-            }
-          }
-        ]
-      }}
-    >
-      <div className="flex items-center">
-        <button 
-          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-l-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-bold"
-          onClick={handleDecrement}
-        >
-          -
-        </button>
-        
-        <input
-          type="number"
-          value={value}
-          onChange={handleChange}
-          min={min}
-          max={max}
-          step={step}
-          className="w-full h-8 px-2 text-center border-y border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 nodrag"
-        />
-        
-        <button 
-          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-bold"
-          onClick={handleIncrement}
-        >
-          +
-        </button>
-        
-        {unit && (
-          <span className="ml-2 text-gray-700 dark:text-gray-300">{unit}</span>
-        )}
-      </div>
+    <div className="number-input-node">
+      <div className="node-header">Number Input</div>
       
-      {/* Display current value */}
-      <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600 dark:text-gray-400">Value:</span>
-          <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
-            {value}{unit && <span className="ml-1 text-xs">{unit}</span>}
-          </span>
+      <div className="node-content">
+        <div className="input-row">
+          <input
+            type="number"
+            value={value}
+            onChange={handleInputChange}
+            className="number-input"
+          />
+        </div>
+        
+        <div className="result-row">
+          <span>Output:</span>
+          <span className="value">{value}</span>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="result"
+          />
         </div>
       </div>
       
-      {/* Input Handle */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ 
-          background: '#6366f1',
-          width: '10px', 
-          height: '10px',
-          border: '2px solid #6366f1'
-        }}
-        className="connectionindicator"
-      />
-    </BaseNode>
+      <style jsx>{`
+        .number-input-node {
+          width: 180px;
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .node-header {
+          padding: 8px;
+          background: #f0f0f0;
+          border-bottom: 1px solid #ddd;
+          font-weight: bold;
+          border-radius: 5px 5px 0 0;
+        }
+        
+        .node-content {
+          padding: 10px;
+        }
+        
+        .input-row, .result-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+          position: relative;
+        }
+        
+        .number-input {
+          width: 100%;
+          padding: 5px;
+          border: 1px solid #ddd;
+          border-radius: 3px;
+        }
+        
+        .value {
+          font-weight: bold;
+          color: #333;
+        }
+      `}</style>
+    </div>
   );
-};
-
-export default React.memo(NumberInputNode); 
+} 
