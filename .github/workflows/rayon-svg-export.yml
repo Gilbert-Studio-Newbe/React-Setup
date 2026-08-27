@@ -1,0 +1,44 @@
+name: Temporary Rayon SVG export
+
+on:
+  push:
+    branches:
+      - automation/rayon-svg-export-20260827
+    paths:
+      - tools/rayon_svg_export.py
+      - .github/workflows/rayon-svg-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out exporter branch
+        uses: actions/checkout@v4
+
+      - name: Export all public Rayon block SVGs
+        run: python3 tools/rayon_svg_export.py --output export --workers 12
+
+      - name: Show export summary
+        if: always()
+        run: |
+          if [ -f export/summary.json ]; then
+            cat export/summary.json
+          else
+            echo "No summary file was produced"
+          fi
+
+      - name: Upload SVG collection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayon-blocks-svg
+          path: export/
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 6
