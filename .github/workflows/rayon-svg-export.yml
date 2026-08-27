@@ -1,44 +1,46 @@
-name: Temporary Rayon SVG export
+name: Temporary Rayon SVG Export
 
 on:
-  push:
+  pull_request:
     branches:
-      - automation/rayon-svg-export-20260827
-    paths:
-      - tools/rayon_svg_export.py
-      - .github/workflows/rayon-svg-export.yml
-  workflow_dispatch:
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 jobs:
   export:
+    if: github.head_ref == 'automation/rayon-svg-export-20260827'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 35
 
     steps:
-      - name: Check out exporter branch
+      - name: Check out temporary branch
         uses: actions/checkout@v4
 
-      - name: Export all public Rayon block SVGs
-        run: python3 tools/rayon_svg_export.py --output export --workers 12
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install scraper dependencies
+        run: python -m pip install --disable-pip-version-check requests beautifulsoup4
+
+      - name: Download and validate Rayon SVG catalogue
+        run: python tools/rayon-export/export.py
 
       - name: Show export summary
-        if: always()
-        run: |
-          if [ -f export/summary.json ]; then
-            cat export/summary.json
-          else
-            echo "No summary file was produced"
-          fi
+        if: success()
+        run: cat export-output/summary.json
 
-      - name: Upload SVG collection
-        if: always()
+      - name: Upload complete SVG bundle
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: rayon-blocks-svg
-          path: export/
+          name: rayon-blocks-svgs
+          path: export-output/
           if-no-files-found: error
-          retention-days: 2
-          compression-level: 6
+          retention-days: 1
+          compression-level: 9
